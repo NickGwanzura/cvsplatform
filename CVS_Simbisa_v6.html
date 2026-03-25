@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CVS — Cash Verification System | Simbisa Brands</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#f4f4f4;--l1:#fff;--l2:#f4f4f4;--l3:#e0e0e0;--lh:#e8e8e8;
+  --bs:#e0e0e0;--bst:#8d8d8d;--tp:#161616;--ts:#525252;--tph:#a8a8a8;
+  --int:#0f62fe;--inth:#0353e9;
+  --ok:#24a148;--ok-bg:#defbe6;--ok-t:#0e6027;
+  --wa:#f1c21b;--wa-bg:#fdf6dd;--wa-t:#684e00;
+  --er:#da1e28;--er-bg:#fff1f1;--er-t:#a2191f;
+  --info:#0043ce;--info-bg:#edf5ff;--hl:#d0e2ff;
+  --pur:#6929c4;--pur-bg:#f6f2ff;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tp);font-size:14px;line-height:1.43;overflow:hidden;height:100vh}
+code{font-family:'IBM Plex Mono',monospace}
+
+/* ══ TOAST SYSTEM ══════════════════════════════════════════════════════════ */
+#toastContainer{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:#161616;color:#f4f4f4;padding:14px 18px 14px 14px;display:flex;align-items:flex-start;gap:10px;min-width:300px;max-width:400px;border-left:4px solid;animation:toastIn .25s ease;pointer-events:all;font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.toast.ok{border-color:var(--ok)}
+.toast.er{border-color:var(--er)}
+.toast.wa{border-color:var(--wa)}
+.toast.info{border-color:var(--int)}
+.toast-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.toast-body{flex:1}.toast-title{font-weight:600;margin-bottom:2px}.toast-sub{font-size:11px;color:#a8a8a8;font-family:'IBM Plex Mono',monospace}
+.toast-x{background:none;border:none;color:#6f6f6f;cursor:pointer;font-size:16px;line-height:1;padding:0;flex-shrink:0}
+.toast-x:hover{color:#f4f4f4}
+@keyframes toastIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes toastOut{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(20px)}}
+
+/* ══ LOGIN ══════════════════════════════════════════════════════════════════ */
+#LOGIN{position:fixed;inset:0;z-index:900;display:flex;transition:opacity .3s}
+#LOGIN.out{opacity:0;pointer-events:none}
+.lg-l{width:380px;flex-shrink:0;background:#161616;display:flex;flex-direction:column;justify-content:space-between;padding:44px 38px;border-right:1px solid #262626}
+.lg-logo{display:flex;align-items:center;gap:10px;margin-bottom:36px}
+.lg-sq{width:36px;height:36px;background:var(--int);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:700;font-size:13px;color:#fff}
+.lg-nm{font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:700;font-size:18px;color:#f4f4f4}
+.lg-sb{font-size:10px;color:#6f6f6f;font-family:'IBM Plex Mono',monospace}
+.lg-h{font-family:'IBM Plex Sans Condensed',sans-serif;font-size:36px;font-weight:700;color:#f4f4f4;line-height:1.15;margin-bottom:10px}
+.lg-h em{font-style:normal;color:var(--int)}
+.lg-p{font-size:13px;color:#8d8d8d;font-weight:300;line-height:1.6;margin-bottom:28px}
+.lg-badges{display:flex;flex-wrap:wrap;gap:5px}
+.lb{padding:3px 9px;border:1px solid #393939;color:#6f6f6f;font-size:10px;font-family:'IBM Plex Mono',monospace}
+.lg-r{flex:1;background:#f4f4f4;display:flex;align-items:center;justify-content:center;padding:36px}
+.lg-card{width:100%;max-width:460px;background:#fff;border:1px solid var(--bs);padding:36px}
+.lc-h{font-family:'IBM Plex Sans Condensed',sans-serif;font-size:24px;font-weight:600;margin-bottom:4px}
+.lc-s{font-size:12px;color:var(--ts);margin-bottom:24px;font-weight:300}
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:22px}
+.rc{border:2px solid var(--bs);background:none;cursor:pointer;padding:11px;text-align:left;transition:all .15s;font-family:'IBM Plex Sans',sans-serif}
+.rc:hover{border-color:var(--int);background:var(--info-bg)}
+.rc.sel{border-color:var(--int);background:var(--info-bg)}
+.rc-role{font-size:10px;font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--int);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.rc-name{font-size:13px;font-weight:600;color:var(--tp)}
+.rc-brand{font-size:10px;color:var(--ts);margin-top:1px}
+.lf{margin-bottom:16px}
+.ll{font-size:11px;color:var(--ts);margin-bottom:5px;display:block;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.04em}
+.li{width:100%;background:var(--l2);border:none;border-bottom:2px solid var(--bst);color:var(--tp);padding:10px 11px;font-family:'IBM Plex Sans',sans-serif;font-size:14px;outline:none;transition:border-color .15s}
+.li:focus{border-bottom-color:var(--int)}
+.li::placeholder{color:var(--tph)}
+.lg-btn{width:100%;height:46px;background:var(--int);border:none;color:#fff;font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.lg-btn:hover{background:var(--inth)}
+.lerr{display:none;margin-top:10px;padding:9px 12px;background:var(--er-bg);border-left:3px solid var(--er);font-size:12px;color:var(--er-t)}
+
+/* ══ SHELL ══════════════════════════════════════════════════════════════════ */
+#APP{display:none;height:100vh}
+.hdr{position:fixed;top:0;left:0;right:0;height:48px;background:var(--l1);border-bottom:1px solid var(--bs);display:flex;align-items:center;z-index:100;padding:0 16px;gap:12px}
+.h-sq{width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:700;font-size:11px;color:#fff;flex-shrink:0}
+.h-nm{font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:700;font-size:13px;line-height:1.1;min-width:160px}
+.h-sub{font-size:10px;color:var(--ts);font-family:'IBM Plex Mono',monospace}
+.hdiv{width:1px;height:22px;background:var(--bs)}
+.h-ttl{font-size:13px;color:var(--ts);flex:1}
+.h-tag{padding:2px 9px;font-size:10px;font-family:'IBM Plex Mono',monospace;font-weight:700;color:#fff;letter-spacing:.05em}
+.h-btn{width:44px;height:48px;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--tp);transition:background .1s}
+.h-btn:hover{background:var(--lh)}
+.h-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;margin-right:6px;flex-shrink:0}
+.snav{position:fixed;top:48px;left:0;bottom:0;width:252px;background:var(--l1);border-right:1px solid var(--bs);z-index:90;overflow-y:auto;display:flex;flex-direction:column}
+.snav::-webkit-scrollbar{width:3px}.snav::-webkit-scrollbar-thumb{background:var(--bs)}
+.snl{padding:14px 14px 6px;font-size:10px;color:var(--ts);text-transform:uppercase;letter-spacing:.08em;font-family:'IBM Plex Mono',monospace}
+.sni{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;color:var(--ts);font-size:13px;transition:all .1s;border-left:3px solid transparent}
+.sni:hover{background:var(--lh);color:var(--tp)}
+.sni.on{background:var(--hl);color:var(--info);border-left-color:var(--int);font-weight:500}
+.sni-ic{width:14px;height:14px;flex-shrink:0;opacity:.55}
+.sni.on .sni-ic{opacity:1}
+.snb{margin-left:auto;font-size:10px;font-weight:700;padding:1px 6px;font-family:'IBM Plex Mono',monospace;color:#fff;border-radius:0}
+.snb.alert{background:var(--er);animation:blink 2s infinite}
+.snb.live{background:var(--ok-t);font-size:9px}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.snd{height:1px;background:var(--bs);margin:5px 0}
+.main{margin-top:48px;margin-left:252px;flex:1;overflow-y:auto;background:var(--bg);display:none;height:calc(100vh - 48px)}
+.main.on{display:block;animation:fi .18s ease}
+@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.ph{padding:22px 28px 0;border-bottom:1px solid var(--bs);background:var(--l1)}
+.bc{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--ts);margin-bottom:7px;font-family:'IBM Plex Mono',monospace}
+.bc span{color:var(--tph)}
+.pt{font-family:'IBM Plex Sans Condensed',sans-serif;font-size:22px;font-weight:600;margin-bottom:3px}
+.pd{font-size:12px;color:var(--ts);margin-bottom:16px;font-weight:300}
+.ptabs{display:flex}
+.ptab{padding:8px 14px;background:none;border:none;border-bottom:2px solid transparent;color:var(--ts);cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-size:13px;transition:all .15s}
+.ptab.on{color:var(--tp);border-bottom-color:var(--int);font-weight:500}
+.ptab:hover:not(.on){color:var(--tp)}
+.cnt{padding:20px 28px}
+
+/* ══ KPI CARDS ══════════════════════════════════════════════════════════════ */
+.kg{display:grid;gap:1px;background:var(--bs);border:1px solid var(--bs);margin-bottom:20px}
+.kg.c4{grid-template-columns:repeat(4,1fr)}
+.kg.c3{grid-template-columns:repeat(3,1fr)}
+.kg.c5{grid-template-columns:repeat(5,1fr)}
+.kc{background:var(--l1);padding:16px 14px 12px;position:relative;overflow:hidden}
+.kc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kc.bl::before{background:var(--int)}.kc.gn::before{background:var(--ok)}.kc.yw::before{background:var(--wa)}.kc.rd::before{background:var(--er)}.kc.pr::before{background:var(--pur)}.kc.tl::before{background:#005f73}
+.kl{font-size:10px;color:var(--ts);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px;font-family:'IBM Plex Mono',monospace}
+.kv{font-family:'IBM Plex Sans Condensed',sans-serif;font-size:26px;font-weight:600;line-height:1;margin-bottom:3px}
+.kd{font-size:10px;font-family:'IBM Plex Mono',monospace}.kd.up{color:var(--ok)}.kd.dn{color:var(--er)}.kd.nt{color:var(--ts)}
+.ki{position:absolute;bottom:8px;right:10px;font-size:24px;opacity:.06}
+
+/* ══ TABLES ══════════════════════════════════════════════════════════════════ */
+.tbbar{display:flex;align-items:center;gap:8px;background:var(--l1);padding:10px 14px;border:1px solid var(--bs);border-bottom:none}
+.tbt{font-size:13px;font-weight:600;flex:1}
+.srch{background:var(--l2);border:none;border-bottom:1px solid var(--bst);color:var(--tp);padding:7px 10px;font-family:'IBM Plex Sans',sans-serif;font-size:12px;width:170px;outline:none;transition:border-color .15s}
+.srch:focus{border-bottom-color:var(--int)}.srch::placeholder{color:var(--tph)}
+.fb{padding:6px 11px;border:1px solid var(--bst);background:none;color:var(--tp);cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-size:12px;transition:background .1s}
+.fb:hover{background:var(--lh)}
+.ab{padding:6px 14px;border:1px solid;background:none;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-size:13px;transition:all .1s;display:flex;align-items:center;gap:5px;height:36px}
+.ab.pri{background:var(--int);border-color:var(--int);color:#fff}.ab.pri:hover{background:var(--inth)}
+.ab.sec{border-color:var(--bst);color:var(--tp)}.ab.sec:hover{background:var(--lh)}
+.ab.ok-btn{background:var(--ok-t);border-color:var(--ok-t);color:#fff}
+.ab.dan{background:var(--er);border-color:var(--er);color:#fff}
+.ab.gho{border-color:transparent;color:var(--int)}.ab.gho:hover{background:var(--info-bg)}
+.ab.wa-btn{background:var(--wa-t);border-color:var(--wa-t);color:#fff}
+.dt{width:100%;border-collapse:collapse;border:1px solid var(--bs)}
+.dt th{background:var(--l2);padding:9px 12px;text-align:left;font-size:10px;font-weight:600;color:var(--ts);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--bs);white-space:nowrap;font-family:'IBM Plex Mono',monospace}
+.dt td{padding:10px 12px;border-bottom:1px solid var(--bs);font-size:13px;vertical-align:middle}
+.dt tr{background:var(--l1);transition:background .1s}.dt tr:hover{background:var(--lh)}.dt tr:last-child td{border-bottom:none}
+.ck{width:38px;text-align:center}
+input[type=checkbox]{width:14px;height:14px;accent-color:var(--int);cursor:pointer}
+
+/* ══ TAGS ══════════════════════════════════════════════════════════════════ */
+.tag{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;font-size:10px;font-weight:600;letter-spacing:.03em;font-family:'IBM Plex Mono',monospace}
+.td{width:5px;height:5px;border-radius:50%;background:currentColor}
+.t-pen{background:var(--wa-bg);color:var(--wa-t)}.t-apv{background:var(--ok-bg);color:var(--ok-t)}.t-rev{background:var(--info-bg);color:var(--info)}.t-rej{background:var(--er-bg);color:var(--er-t)}.t-paid{background:#a7f0ba;color:#044317}.t-exc{background:var(--pur-bg);color:var(--pur)}.t-alert{background:var(--er-bg);color:var(--er-t);animation:blink 1.5s infinite}
+
+/* brand chips */
+.bc2{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;font-size:10px;font-family:'IBM Plex Mono',monospace;font-weight:700}
+.bci{background:#edf5ff;color:#0f62fe}.bcp{background:#fff1f1;color:#da1e28}.bcc{background:var(--pur-bg);color:var(--pur)}.bcn{background:#fff2e8;color:#ff6900}.bcs{background:var(--ok-bg);color:var(--ok-t)}.bcr{background:#fff0f0;color:#c00000}.bcob{background:#e0f4f7;color:#005f73}.bchf{background:#fff3cd;color:#7a5c00}.bcpa{background:#d8f3dc;color:#2d6a4f}
+
+/* row btns */
+.ra{display:flex;gap:5px}
+.rb{padding:3px 9px;border:1px solid;background:none;font-size:11px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;transition:all .1s;white-space:nowrap}
+.rb.ap{border-color:var(--ok);color:var(--ok)}.rb.ap:hover{background:var(--ok-bg)}
+.rb.rv{border-color:var(--info);color:var(--info)}.rb.rv:hover{background:var(--info-bg)}
+.rb.rj{border-color:var(--er);color:var(--er)}.rb.rj:hover{background:var(--er-bg)}
+.rb.pay{background:var(--int);border-color:var(--int);color:#fff;font-weight:600}.rb.pay:hover{background:var(--inth)}
+.rb.vw{border-color:var(--bst);color:var(--ts)}.rb.vw:hover{background:var(--lh)}
+.rb.ed{border-color:var(--int);color:var(--int)}.rb.ed:hover{background:var(--info-bg)}
+
+/* ══ FORMS ══════════════════════════════════════════════════════════════════ */
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.fi{padding:13px;border:1px solid var(--bs);margin:-1px 0 0 -1px}
+.fi.full{grid-column:1/-1}.fi.c3{grid-template-columns:1fr 1fr 1fr}
+.fl{font-size:10px;color:var(--ts);margin-bottom:5px;display:block;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.03em}
+.fin,.fsel{width:100%;background:var(--l2);border:none;border-bottom:1px solid var(--bst);color:var(--tp);padding:8px 10px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;outline:none;transition:border-color .15s;appearance:none}
+.fin:focus,.fsel:focus{border-bottom-color:var(--int)}
+.fh{font-size:10px;color:var(--ts);margin-top:3px;font-family:'IBM Plex Mono',monospace}
+
+/* ══ NOTIF BANNER ══════════════════════════════════════════════════════════ */
+.ntf{display:flex;align-items:flex-start;gap:10px;padding:10px 13px;margin-bottom:13px;border-left:3px solid}
+.ntf.info{background:var(--info-bg);border-color:var(--info)}.ntf.ok{background:var(--ok-bg);border-color:var(--ok)}.ntf.wa{background:var(--wa-bg);border-color:var(--wa)}.ntf.er{background:var(--er-bg);border-color:var(--er)}
+.ntf-t{font-weight:600;font-size:13px;margin-bottom:2px}.ntf-b{font-size:12px;color:var(--ts)}
+.ntf-x{background:none;border:none;cursor:pointer;color:var(--ts);font-size:16px;line-height:1;margin-left:auto}
+
+/* ══ THRESHOLD BANNER ══════════════════════════════════════════════════════ */
+.thresh{background:var(--er-bg);border:1px solid var(--er);border-left:4px solid var(--er);padding:13px 14px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px}
+.thr-ic{font-size:20px;flex-shrink:0;animation:blink 2s infinite}
+.thr-t{font-weight:700;font-size:13px;color:var(--er-t);margin-bottom:3px}
+.thr-d{font-size:12px;color:var(--ts);margin-bottom:8px}
+.thr-acts{display:flex;gap:7px}
+
+/* ══ MODAL ══════════════════════════════════════════════════════════════════ */
+.ov{position:fixed;inset:0;background:rgba(22,22,22,.5);z-index:500;display:none;align-items:center;justify-content:center}
+.ov.open{display:flex}
+.modal{background:var(--l1);border:1px solid var(--bs);width:560px;max-width:92vw;max-height:88vh;display:flex;flex-direction:column;animation:su .17s ease}
+.modal.lg{width:800px}.modal.xl{width:960px}
+@keyframes su{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+.mh{padding:13px 20px;border-bottom:1px solid var(--bs);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0}
+.mt{font-size:16px;font-weight:600;font-family:'IBM Plex Sans Condensed',sans-serif}
+.ms{font-size:11px;color:var(--ts);margin-top:2px}
+.mx{background:none;border:none;cursor:pointer;color:var(--ts);font-size:20px;line-height:1;padding:0}.mx:hover{color:var(--tp)}
+.mb{padding:20px;overflow-y:auto;flex:1}.mb::-webkit-scrollbar{width:3px}.mb::-webkit-scrollbar-thumb{background:var(--bs)}
+.mf{padding:13px 20px;border-top:1px solid var(--bs);display:flex;justify-content:flex-end;gap:0;flex-shrink:0}
+.mf .ab{height:42px;padding:0 20px;font-size:13px}
+
+/* ══ InnBucks panel ══════════════════════════════════════════════════════════ */
+.ibp{background:var(--l1);border:1px solid var(--bs);padding:18px;margin-bottom:18px}
+.ibh{display:flex;align-items:center;gap:13px;margin-bottom:14px;padding-bottom:13px;border-bottom:1px solid var(--bs)}
+.ibl{background:#0f62fe;color:#fff;padding:4px 11px;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:13px;letter-spacing:.05em}
+.ibs{font-size:11px;color:var(--ok);font-family:'IBM Plex Mono',monospace}.ibs::before{content:'● '}
+.ps{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-bottom:14px}
+.pfl{font-size:10px;color:var(--ts);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;margin-bottom:3px}
+.pfv{font-size:15px;font-weight:600;font-family:'IBM Plex Sans Condensed',sans-serif}
+.pfv.amt{color:var(--int);font-size:24px}
+
+/* ══ BUDGET PROGRESS ══════════════════════════════════════════════════════════ */
+.bp-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bs)}
+.bp-row:last-child{border-bottom:none}
+.bp-label{width:120px;font-size:12px;font-weight:500}
+.bp-sub{font-size:10px;color:var(--ts);font-family:'IBM Plex Mono',monospace}
+.bp-track{flex:1;height:10px;background:var(--l2);overflow:hidden;position:relative}
+.bp-fill{height:100%;transition:width 1.2s ease}
+.bp-pct{font-size:11px;font-family:'IBM Plex Mono',monospace;width:38px;text-align:right;font-weight:600}
+.bp-vals{font-size:11px;color:var(--ts);font-family:'IBM Plex Mono',monospace;width:120px;text-align:right}
+
+/* ══ CRON ══════════════════════════════════════════════════════════════════ */
+.cron{background:var(--ok-bg);border:1px solid var(--ok);padding:8px 13px;display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.cron-d{width:7px;height:7px;border-radius:50%;background:var(--ok);animation:blink 2s infinite}
+.cron-l{font-size:11px;color:var(--ok-t);font-family:'IBM Plex Mono',monospace;flex:1}
+.cron-t{font-size:10px;color:var(--ts);font-family:'IBM Plex Mono',monospace}
+
+/* ══ STEPS ══════════════════════════════════════════════════════════════════ */
+.steps{display:flex;margin-bottom:22px;position:relative}
+.steps::before{content:'';position:absolute;top:11px;left:22px;right:22px;height:1px;background:var(--bs)}
+.step{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;z-index:1}
+.sn{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-family:'IBM Plex Mono',monospace;font-weight:700;border:2px solid var(--bs);background:var(--l1);color:var(--ts)}
+.step.on .sn{border-color:var(--int);background:var(--int);color:#fff}
+.step.dn .sn{border-color:var(--ok);background:var(--ok);color:#fff}
+.sl{font-size:10px;color:var(--ts);font-family:'IBM Plex Mono',monospace}
+.step.on .sl{color:var(--tp)}
+
+/* ══ LOG ENTRY ══════════════════════════════════════════════════════════════ */
+.log-e{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--bs)}
+.log-e:last-child{border-bottom:none}
+.log-dot{width:7px;height:7px;border-radius:50%;margin-top:4px;flex-shrink:0}
+.log-time{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--ts);min-width:110px}
+.log-txt{font-size:12px;color:var(--tp);flex:1}
+.log-user{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--ts);margin-top:2px}
+
+/* ══ BATCH SELECT ══════════════════════════════════════════════════════════ */
+.batch-bar{display:none;align-items:center;gap:10px;background:#161616;color:#f4f4f4;padding:10px 14px;margin-bottom:-1px}
+.batch-bar.show{display:flex}
+.batch-ct{font-size:13px;font-weight:600;flex:1}
+.batch-act{padding:7px 16px;border:1px solid;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-size:12px;transition:all .1s}
+.batch-act.pri{background:var(--int);border-color:var(--int);color:#fff}
+.batch-act.sec{border-color:#6f6f6f;color:#f4f4f4}
+.batch-act.sec:hover{background:#393939}
+
+/* ══ ADMIN INVITE ══════════════════════════════════════════════════════════ */
+.invite-card{background:var(--l1);border:1px solid var(--bs);padding:16px;display:flex;align-items:flex-start;gap:13px;margin-bottom:1px}
+.ic-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.ic-name{font-weight:600;font-size:13px;margin-bottom:2px}
+.ic-role{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--ts)}
+.ic-status{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+
+/* ══ EXEC CHART ══════════════════════════════════════════════════════════════ */
+.exec-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.ec{background:var(--l1);border:1px solid var(--bs);padding:16px}
+.ec-t{font-size:11px;color:var(--ts);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.ec-val{font-family:'IBM Plex Sans Condensed',sans-serif;font-size:28px;font-weight:700;margin-bottom:4px}
+.ec-sub{font-size:11px;color:var(--ts);font-family:'IBM Plex Mono',monospace}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--l1)}
+::-webkit-scrollbar-thumb{background:var(--bs)}
+</style>
+</head>
+<body>
+
+<div id="toastContainer"></div>
+
+<!-- ═══════════════════════════════════════════════════════ LOGIN ══════════ -->
+<div id="LOGIN">
+  <div class="lg-l">
+    <div>
+      <div class="lg-logo">
+        <div class="lg-sq">CVS</div>
+        <div><div class="lg-nm">CVS</div><div class="lg-sb">Cash Verification System</div></div>
+      </div>
+      <div class="lg-h">Cashless.<br/>Verified.<br/><em>Instant.</em></div>
+      <div class="lg-p">End-to-end petty cash automation powered by InnBucks across all Simbisa brands. IBM Carbon Design System.</div>
+    </div>
+    <div>
+      <div style="font-size:10px;color:#6f6f6f;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">9 Brands on Platform</div>
+      <div class="lg-badges">
+        <span class="lb">Chicken Inn</span><span class="lb">Pizza Inn</span><span class="lb">Creamy Inn</span>
+        <span class="lb">Nando's</span><span class="lb">Steers</span><span class="lb">Roco Mamma's</span>
+        <span class="lb">Ocean Basket</span><span class="lb">Hefelies</span><span class="lb">Pastino's</span>
+      </div>
+    </div>
+  </div>
+  <div class="lg-r">
+    <div class="lg-card">
+      <div class="lc-h">Sign In to CVS</div>
+      <div class="lc-s">Select a demo role to explore</div>
+      <div style="font-size:10px;color:var(--ts);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Demo Roles</div>
+      <div class="role-grid">
+        <button class="rc" onclick="pickRole(this,'manager','K. Mutasa','Chicken Inn','#0f62fe','CI')">
+          <div class="rc-role">Shop Manager</div><div class="rc-name">K. Mutasa</div><div class="rc-brand">Chicken Inn — Sh-14</div>
+        </button>
+        <button class="rc" onclick="pickRole(this,'accountant','C. Mutandwa','Pizza Inn','#da1e28','PI')">
+          <div class="rc-role">Brand Accountant</div><div class="rc-name">C. Mutandwa</div><div class="rc-brand">Pizza Inn</div>
+        </button>
+        <button class="rc" onclick="pickRole(this,'brandmgr','T. Ndlovu','Chicken Inn','#0f62fe','CI')">
+          <div class="rc-role">Brand Manager</div><div class="rc-name">T. Ndlovu</div><div class="rc-brand">Chicken Inn</div>
+        </button>
+        <button class="rc" onclick="pickRole(this,'procurement','R. Chikwanda','Head Office','#6929c4','HO')">
+          <div class="rc-role">Procurement</div><div class="rc-name">R. Chikwanda</div><div class="rc-brand">Head Office</div>
+        </button>
+        <button class="rc" onclick="pickRole(this,'admin','S. Moyo','Head Office','#005f73','AD')">
+          <div class="rc-role">Admin</div><div class="rc-name">S. Moyo</div><div class="rc-brand">System Admin</div>
+        </button>
+        <button class="rc" onclick="pickRole(this,'executive','D. Chinhoro','Simbisa Group','#161616','EX')">
+          <div class="rc-role">Executive</div><div class="rc-name">D. Chinhoro</div><div class="rc-brand">Group CEO</div>
+        </button>
+      </div>
+      <div class="lf"><label class="ll">Email</label><input class="li" type="email" id="lgEmail" placeholder="name@simbisa.co.zw" readonly/></div>
+      <div class="lf"><label class="ll">Password</label><input class="li" type="password" id="lgPass" value="demo1234" readonly/></div>
+      <button class="lg-btn" onclick="doLogin()">Sign In <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M11.7 7l-4-4L9 1.6 14.4 7 9 12.4 7.7 11l4-4H2V5h9.7z"/></svg></button>
+      <div class="lerr" id="lgErr">Please select a role.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ APP ════════════ -->
+<div id="APP">
+  <header class="hdr">
+    <div class="h-sq" id="hSq" style="background:#0f62fe">CI</div>
+    <div style="min-width:170px"><div class="h-nm" id="hNm">Cash Verification System</div><div class="h-sub" id="hSub">Chicken Inn — Shop Manager</div></div>
+    <div class="hdiv"></div>
+    <div class="h-ttl" id="hTtl">Dashboard</div>
+    <span class="h-tag" id="hTag" style="background:#0f62fe">CVS</span>
+    <div style="display:flex;align-items:center">
+      <button class="h-btn" onclick="openM('notifM')"><svg width="16" height="16" viewBox="0 0 32 32" fill="currentColor"><path d="M28.7 19.3L26 16.6V13a10 10 0 00-8-9.8V2h-4v1.2A10 10 0 006 13v3.6l-2.7 2.7A1 1 0 004 21h7a5 5 0 0010 0h7a1 1 0 00.7-1.7zM16 23a3 3 0 01-3-2h6a3 3 0 01-3 2z"/></svg></button>
+      <button class="h-btn" onclick="doLogout()" title="Sign out"><svg width="16" height="16" viewBox="0 0 32 32" fill="currentColor"><path d="M12 4H4v24h8v-2H6V6h6zm8 18l-1.5-1.5L22 17H10v-2h12l-3.5-3.5L20 10l6 6z"/></svg></button>
+      <div class="h-av" id="hAv" style="background:#0f62fe">KM</div>
+    </div>
+  </header>
+  <nav class="snav" id="sNav"></nav>
+
+  <!-- ═══════════════════════════ MANAGER DASHBOARD ═══════════════════════ -->
+  <main class="main on" id="v-mgr-dashboard">
+    <div class="ph">
+      <div class="bc">CVS <span>/</span> Chicken Inn <span>/</span> Sh-14 Borrowdale <span>/</span> Dashboard</div>
+      <div class="pt">Good morning, K. Mutasa</div>
+      <div class="pd">Chicken Inn — Sh-14 Borrowdale &nbsp;|&nbsp; Tuesday 23 March 2025</div>
+    </div>
+    <div class="cnt">
+      <div class="thresh">
+        <div class="thr-ic">🚨</div>
+        <div>
+          <div class="thr-t">Threshold Alert — Sh-14 Borrowdale at 90% of Monthly Budget</div>
+          <div class="thr-d">Monthly spend: <strong>$720 of $800</strong>. Cleaning Supplies category at <strong>$280 of $300 cap</strong>. New requests require exception approval. Brand Accountant and Brand Manager have been notified.</div>
+          <div class="thr-acts"><button class="ab sec" style="height:30px;font-size:11px" onclick="openM('excM')">Request Exception</button></div>
+        </div>
+      </div>
+      <div class="kg c4">
+        <div class="kc bl"><div class="kl">Monthly Budget — Sh-14</div><div class="kv">$800</div><div class="kd nt">Chicken Inn Sh-14 limit</div><div class="ki">💳</div></div>
+        <div class="kc rd"><div class="kl">Spent This Month</div><div class="kv">$720</div><div class="kd dn">⚠ 90% used — threshold active</div><div class="ki">📊</div></div>
+        <div class="kc yw"><div class="kl">Pending Approval</div><div class="kv">$180</div><div class="kd nt">1 request awaiting review</div><div class="ki">⏳</div></div>
+        <div class="kc gn"><div class="kl">Available Balance</div><div class="kv">$80</div><div class="kd dn">Low — monitor spend</div><div class="ki">✓</div></div>
+      </div>
+      <div class="tbbar"><div class="tbt">My Requests — Sh-14 Borrowdale</div><button class="ab pri" onclick="showView('mgr-new-request')">+ New Request</button></div>
+      <table class="dt">
+        <thead><tr><th>Request ID</th><th>Date</th><th>Category</th><th>Purpose</th><th>Supplier</th><th>Amount</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><code style="color:var(--info);font-size:11px">PC-0041</code></td><td style="color:var(--ts);font-size:12px">23 Mar</td><td>Cleaning</td><td>Weekly cleaning supplies</td><td>CleanPro</td><td><strong>$180</strong></td><td><span class="tag t-rev"><span class="td"></span>IN REVIEW</span></td><td><button class="rb vw">View</button></td></tr>
+          <tr><td><code style="color:var(--info);font-size:11px">PC-0039</code></td><td style="color:var(--ts);font-size:12px">18 Mar</td><td>Gas</td><td>Gas cylinder refill</td><td>ZimGas</td><td><strong>$120</strong></td><td><span class="tag t-paid"><span class="td"></span>PAID</span></td><td><button class="rb vw">View</button></td></tr>
+          <tr><td><code style="color:var(--info);font-size:11px">PC-0035</code></td><td style="color:var(--ts);font-size:12px">12 Mar</td><td>Maintenance</td><td>Door seal repair</td><td>Swift Maintenance</td><td><strong>$200</strong></td><td><span class="tag t-paid"><span class="td"></span>PAID</span></td><td><button class="rb vw">View</button></td></tr>
+          <tr><td><code style="color:var(--info);font-size:11px">PC-0028</code></td><td style="color:var(--ts);font-size:12px">28 Feb</td><td>Emergency</td><td>Emergency plumbing</td><td>AquaFix</td><td><strong>$340</strong></td><td><span class="tag t-rej"><span class="td"></span>REJECTED</span></td><td><button class="rb vw">View</button></td></tr>
+        </tbody>
+      </table>
+      <div style="height:20px"></div>
+      <div class="tbbar"><div class="tbt">Audit Log — Sh-14 Borrowdale (My Activity)</div></div>
+      <div style="background:var(--l1);border:1px solid var(--bs);padding:8px 14px">
+        <div class="log-e"><div class="log-dot" style="background:var(--er)"></div><div class="log-time">23 Mar 13:10</div><div><div class="log-txt"><strong>THRESHOLD ALERT</strong> — Sh-14 reached 90% of $800 monthly budget</div><div class="log-user">System Auto · Notified: Accountant, Brand Manager</div></div></div>
+        <div class="log-e"><div class="log-dot" style="background:var(--wa)"></div><div class="log-time">23 Mar 08:14</div><div><div class="log-txt"><strong>REQUEST SUBMITTED</strong> — PC-0041 · $180 · Cleaning Supplies · CleanPro</div><div class="log-user">K. Mutasa (Shop Manager) · Sh-14 Borrowdale</div></div></div>
+        <div class="log-e"><div class="log-dot" style="background:var(--ok)"></div><div class="log-time">18 Mar 14:30</div><div><div class="log-txt"><strong>PAYMENT RECEIVED</strong> — PC-0039 · $120 · InnBucks TXN-93391</div><div class="log-user">K. Mutasa (Shop Manager) · ZimGas</div></div></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══════════════════════════ MANAGER NEW REQUEST ════════════════════ -->
+  <main class="main" id="v-mgr-new-request">
+    <div class="ph">
+      <div class="bc">CVS <span>/</span> Chicken Inn <span>/</span> Sh-14 <span>/</span> New Request</div>
+      <div class="pt">Submit Petty Cash Request</div>
+      <div class="pd">Funds disbursed via InnBucks upon Brand Manager approval</div>
+    </div>
+    <div class="cnt">
+      <div class="steps"><div class="step on"><div class="sn">1</div><div class="sl">Details</div></div><div class="step"><div class="sn">2</div><div class="sl">Supplier</div></div><div class="step"><div class="sn">3</div><div class="sl">Submit</div></div></div>
+      <div class="fg" style="margin-bottom:1px">
+        <div class="fi"><label class="fl">Brand</label><select class="fsel"><option>Chicken Inn</option></select><div class="fh">Locked to your assigned brand</div></div>
+        <div class="fi"><label class="fl">Shop</label><select class="fsel"><option>Sh-14 Borrowdale</option></select><div class="fh">Locked to your assigned shop</div></div>
+        <div class="fi"><label class="fl">Category</label><select class="fsel"><option>Maintenance &amp; Repairs</option><option>Cleaning Supplies</option><option>Stationery</option><option>Gas &amp; Utilities</option><option>Emergency</option><option>Other</option></select></div>
+        <div class="fi"><label class="fl">Amount (USD)</label><input class="fin" type="number" placeholder="0.00"/><div class="fh">Available: $80 of $800 limit · Threshold active</div></div>
+        <div class="fi full"><label class="fl">Purpose / Description</label><input class="fin" type="text" placeholder="Describe what the funds will be used for"/></div>
+        <div class="fi full">
+          <label class="fl">Select Supplier</label>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+            <select class="fsel" style="flex:1"><option value="">— Choose verified supplier —</option><option>CleanPro Supplies (CP-0012)</option><option>ZimGas Ltd (ZG-0034)</option><option>Swift Maintenance (SM-0067)</option></select>
+            <button class="ab gho" style="height:34px;white-space:nowrap">+ New Supplier</button>
+          </div>
+          <div class="fh">Only verified suppliers shown. Register new suppliers via Procurement.</div>
+        </div>
+        <div class="fi full"><label class="fl">Attach Document</label><input class="fin" placeholder="Upload invoice/quote (PDF/JPG, max 5MB)"/></div>
+      </div>
+      <div style="display:flex;gap:0;margin-top:1px">
+        <button class="ab sec" onclick="showView('mgr-dashboard')" style="height:44px;padding:0 20px">Cancel</button>
+        <button class="ab pri" onclick="openM('submitM');toast('ok','Request submitted for review','PC-0042 forwarded to Brand Accountant')" style="height:44px;padding:0 24px">Review &amp; Submit</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══════════════════════════ ACCOUNTANT DASHBOARD ═══════════════════ -->
+  <main class="main" id="v-acc-dashboard">
+    <div class="ph">
+      <div class="bc">CVS <span>/</span> Pizza Inn <span>/</span> Brand Accountant <span>/</span> Dashboard</div>
+      <div class="pt">Brand Accountant Dashboard — Pizza Inn</div>
+      <div class="pd">All shops under Pizza Inn brand · Tuesday 23 March 2025</div>
+      <div class="ptabs">
+        <button class="ptab on">Overview</button>
+        <button class="ptab">Review Queue (7)</button>
+        <button class="ptab">Budget Management</button>
+      </div>
+    </div>
+    <div class="cnt">
+      <div class="kg c4">
+        <div class="kc bl"><div class="kl">Total Budget — Pizza Inn</div><div class="kv">$12,400</div><div class="kd nt">Across 12 shops this month</div><div class="ki">💳</div></div>
+        <div class="kc rd"><div class="kl">Total Disbursed</div><div class="kv">$8,820</div><div class="kd dn">71% of total budget used</div><div class="ki">📊</div></div>
+        <div class="kc gn"><div class="kl">Remaining Budget</div><div class="kv">$3,580</div><div class="kd up">29% available</div><div class="ki">✓</div></div>
+        <div class="kc yw"><div class="kl">Pending Requests</div><div class="kv">7</div><div class="kd nt">Awaiting your review</div><div class="ki">⏳</div></div>
+      </div>
+
+      <div class="tbbar"><div class="tbt">Budget vs Disbursed — Pizza Inn Shops</div><button class="ab sec" style="height:34px;font-size:12px" onclick="openM('budgetM')">Set Budgets</button></div>
+      <table class="dt">
+        <thead><tr><th>Shop</th><th>Location</th><th>Monthly Budget</th><th>Disbursed</th><th>Remaining</th><th>% Used</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><strong>Sh-03</strong></td><td>Avondale</td><td>$1,200</td><td>$890</td><td>$310</td><td><span style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--wa-t)">74%</span></td><td><span class="tag t-pen"><span class="td"></span>MONITOR</span></td><td><button class="rb vw">View</button></td></tr>
+          <tr><td><strong>Sh-19</strong></td><td>Eastgate</td><td>$1,000</td><td>$450</td><td>$550</td><td><span style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--ok-t)">45%</span></td><td><span class="tag t-apv"><span class="td"></span>OK</span></td><td><button class="rb vw">View</button></td></tr>
+          <tr><td><strong>Sh-08</strong></td><td>Sam Levy</td><td>$900</td><td>$860</td><td>$40</td><td><span style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--er)">96%</span></td><td><span class="tag t-alert"><span class="td"></span>ALERT</span></td><td><button class="rb vw">View</button></td></tr>
+          <tr><td><strong>Sh-22</strong></td><td>Borrowdale</td><td>$1,100</td><td>$620</td><td>$480</td><td><span style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--ok-t)">56%</span></td><td><span class="tag t-apv"><span class="td"></span>OK</span></td><td><button class="rb vw">View</button></td></tr>
+          <tr><td><strong>Sh-11</strong></td><td>Highfield</td><td>$800</td><td>$780</td><td>$20</td><td><span style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--er)">97%</span></td><td><span class="tag t-alert"><span class="td"></span>ALERT</span></td><td><button class="rb vw">View</button></td></tr>
+        </tbody>
+      </table>
+      <div style="height:20px"></div>
+      <div class="tbbar"><div class="tbt">Review Queue — Pizza Inn</div><input class="srch" placeholder="Search..."/><button class="fb">Status ▾</button></div>
+      <table class="dt">
+        <thead><tr><th class="ck"><input type="checkbox"/></th><th>ID</th><th>Manager</th><th>Shop</th><th>Category</th><th>Supplier</th><th>Amount</th><th>Budget Status</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr style="background:#fff8f8"><td class="ck"><input type="checkbox"/></td><td><code style="color:var(--er);font-size:11px">PC-0044</code></td><td>T. Ndlovu</td><td>Sh-03 Avondale</td><td>Maintenance</td><td>OvenPro</td><td><strong>$450</strong></td><td><span class="tag t-alert"><span class="td"></span>OVER LIMIT</span></td><td><div class="ra"><button class="rb ap" onclick="openM('validateM');toast('info','PC-0044 sent to Brand Manager','Forwarded for approval and payment')">Validate</button><button class="rb ed" onclick="openM('validateM')">Adjust</button><button class="rb rj">Reject</button></div></td></tr>
+          <tr><td class="ck"><input type="checkbox"/></td><td><code style="color:var(--info);font-size:11px">PC-0043</code></td><td>R. Mhondoro</td><td>Sh-19 Eastgate</td><td>Cleaning</td><td>CleanPro</td><td><strong>$95</strong></td><td><span class="tag t-apv"><span class="td"></span>WITHIN LIMIT</span></td><td><div class="ra"><button class="rb ap" onclick="toast('ok','PC-0043 validated','Sent to Brand Manager')">Validate</button><button class="rb rj">Reject</button></div></td></tr>
+          <tr><td class="ck"><input type="checkbox"/></td><td><code style="color:var(--info);font-size:11px">PC-0042</code></td><td>S. Gumbo</td><td>Sh-22 Borrowdale</td><td>Stationery</td><td>OfficeFirst</td><td><strong>$45</strong></td><td><span class="tag t-apv"><span class="td"></span>WITHIN LIMIT</span></td><td><div class="ra"><button class="rb ap" onclick="toast('ok','PC-0042 validated','Sent to Brand Manager')">Validate</button><button class="rb rj">Reject</button></div></td></tr>
+        </tbody>
+      </table>
+      <div style="height:20px"></div>
+      <div class="tbbar"><div class="tbt">Audit Log — Pizza Inn (Brand Accountant View)</div></div>
+      <div style="background:var(--l1);border:1px solid var(--bs);padding:8px 14px">
+        <div class="log-e"><div class="log-dot" style="background:var(--er)"></div><div class="log-time">23 Mar 13:10</div><div><div class="log-txt"><strong>THRESHOLD ALERT</strong> — Sh-08 Sam Levy at 96% of $900 monthly budget</div><div class="log-user">System Auto · Pizza Inn</div></div><span class="bc2 bcp">Pizza Inn</span></div>
+        <div class="log-e"><div class="log-dot" style="background:var(--int)"></div><div class="log-time">23 Mar 11:42</div><div><div class="log-txt"><strong>VALIDATED</strong> — PC-0044 · $450 · Adjusted from $450 to $400 · Forwarded to Brand Manager</div><div class="log-user">C. Mutandwa (Brand Accountant) · Pizza Inn Sh-03</div></div><span class="bc2 bcp">Pizza Inn</span></div>
+        <div class="log-e"><div class="log-dot" style="background:var(--ok)"></div><div class="log-time">22 Mar 09:05</div><div><div class="log-txt"><strong>BUDGET SET</strong> — Sh-08 Sam Levy monthly budget set to $900</div><div class="log-user">C. Mutandwa (Brand Accountant) · Pizza Inn</div></div><span class="bc2 bcp">Pizza Inn</span></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══════════════════════════ BRAND MANAGER DASHBOARD ════════════════ -->
+  <main class="main" id="v-bm-dashboard">
+    <div class="ph">
+      <div class="bc">CVS <span>/</span> Chicken Inn <span>/</span> Brand Manager <span>/</span> Approvals</div>
+      <div class="pt">Brand Manager Dashboard — Chicken Inn</div>
+      <div class="pd">Pending approvals, batch payments and InnBucks sales for Chicken Inn</div>
+      <div class="ptabs">
+        <button class="ptab on">Approvals</button>
+        <button class="ptab">InnBucks Sales</button>
+        <button class="ptab">Audit Log</button>
+      </div>
+    </div>
+    <div class="cnt">
+      <div class="kg c4">
+        <div class="kc yw"><div class="kl">Pending Approvals</div><div class="kv">5</div><div class="kd nt">Validated by Accountant</div><div class="ki">⏳</div></div>
+        <div class="kc bl"><div class="kl">Total to Disburse</div><div class="kv">$1,080</div><div class="kd nt">If all approved</div><div class="ki">💳</div></div>
+        <div class="kc gn"><div class="kl">Paid This Week</div><div class="kv">$4,320</div><div class="kd up">↑ 18 transactions</div><div class="ki">✓</div></div>
+        <div class="kc rd"><div class="kl">Exception Requests</div><div class="kv">2</div><div class="kd dn">Shops over threshold</div><div class="ki">🚨</div></div>
+      </div>
+
+      <!-- Batch payment bar -->
+      <div class="batch-bar" id="batchBar">
+        <div class="batch-ct" id="batchCt">0 requests selected</div>
+        <button class="batch-act sec" onclick="clearBatch()">Clear Selection</button>
+        <button class="batch-act pri" onclick="openM('batchPayM');toast('info','Batch payment initiated','Processing selected requests via InnBucks')">Batch Pay via InnBucks</button>
+      </div>
+
+      <div class="thresh">
+        <div class="thr-ic">🚨</div>
+        <div>
+          <div class="thr-t">Exception Approval Required — PC-0041 — Sh-14 over threshold</div>
+          <div class="thr-d">Sh-14 at 90% of $800 limit. PC-0041 ($180) would exceed by $100. Exception approved by Accountant.</div>
+          <div class="thr-acts"><button class="ab pri" style="height:30px;font-size:11px" onclick="openM('excApproveM');toast('ok','Exception approved','PC-0041 $180 paid via InnBucks')">Approve Exception &amp; Pay</button><button class="ab sec" style="height:30px;font-size:11px">Reject</button></div>
+        </div>
+      </div>
+
+      <div class="tbbar"><div class="tbt">Pending Approvals — Chicken Inn</div><button class="ab sec" style="height:34px;font-size:12px" onclick="openM('batchPayM')">Batch Pay Selected</button></div>
+      <table class="dt" id="bmTable">
+        <thead><tr><th class="ck"><input type="checkbox" onchange="toggleAllBatch(this)"/></th><th>ID</th><th>Manager</th><th>Shop</th><th>Purpose</th><th>Supplier</th><th>InnBucks Wallet</th><th>Amount</th><th>Flag</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td class="ck"><input type="checkbox" class="batchCk" onchange="updateBatch()"/></td><td><code style="color:var(--er);font-size:11px">PC-0041</code></td><td>K. Mutasa</td><td>Sh-14</td><td>Cleaning</td><td>CleanPro</td><td><code style="font-size:11px">IB-0773-8812</code></td><td><strong style="color:var(--int)">$180</strong></td><td><span class="tag t-exc"><span class="td"></span>EXCEPTION</span></td><td><div class="ra"><button class="rb pay" onclick="openM('payM');toast('ok','Payment initiated','PC-0041 $180 sent to IB-0773-8812')">Pay InnBucks</button><button class="rb rj">Reject</button></div></td></tr>
+          <tr><td class="ck"><input type="checkbox" class="batchCk" onchange="updateBatch()"/></td><td><code style="color:var(--info);font-size:11px">PC-0039</code></td><td>P. Chiriseri</td><td>Sh-07</td><td>Maintenance</td><td>Swift</td><td><code style="font-size:11px">IB-0771-2244</code></td><td><strong style="color:var(--int)">$200</strong></td><td><span class="tag t-apv"><span class="td"></span>WITHIN LIMIT</span></td><td><div class="ra"><button class="rb pay" onclick="toast('ok','PC-0039 paid','$200 sent to IB-0771-2244')">Pay InnBucks</button><button class="rb rj">Reject</button></div></td></tr>
+          <tr><td class="ck"><input type="checkbox" class="batchCk" onchange="updateBatch()"/></td><td><code style="color:var(--info);font-size:11px">PC-0038</code></td><td>M. Dube</td><td>Sh-22</td><td>Gas refill</td><td>ZimGas</td><td><code style="font-size:11px">IB-0774-3344</code></td><td><strong style="color:var(--int)">$120</strong></td><td><span class="tag t-apv"><span class="td"></span>WITHIN LIMIT</span></td><td><div class="ra"><button class="rb pay" onclick="toast('ok','PC-0038 paid','$120 sent to IB-0774-3344')">Pay InnBucks</button><button class="rb rj">Reject</button></div></td></tr>
+        </tbody>
+      </table>
+      <div style="height:20px"></div>
+      <!-- InnBucks Sales for BM - brand specific -->
+      <div class="tbbar"><div class="tbt">InnBucks Sales — Chicken Inn (Real-Time)</div><div style="display:flex;align-items:center;gap:6px"><div style="width:7px;height:7px;border-radius:50%;background:var(--ok);animation:blink 1.5s infinite"></div><span style="font-size:11px;color:var(--ok-t);font-family:'IBM Plex Mono',monospace">LIVE</span></div><button class="ab sec" style="height:34px;font-size:12px" onclick="openM('stmtM')">Statement PDF</button></div>
+      <table class="dt">
+        <thead><tr><th>Invoice No.</th><th>Time</th><th>Shop</th><th>Customer InnBucks No.</th><th>Currency</th><th>Amount</th><th>InnBucks Ref</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><code style="color:var(--info);font-size:11px">INV-2025-4412</code></td><td style="font-size:12px;color:var(--ts)">14:31:02</td><td>Sh-22 Eastgate</td><td><code style="font-size:11px">IB-0772-8190</code></td><td><code style="font-size:11px">USD</code></td><td><strong>$142.00</strong></td><td><code style="font-size:11px;color:var(--ok-t)">IB-TXN-93412</code></td><td><span class="tag t-apv"><span class="td"></span>SETTLED</span></td></tr>
+          <tr><td><code style="color:var(--info);font-size:11px">INV-2025-4410</code></td><td style="font-size:12px;color:var(--ts)">14:25:17</td><td>Sh-14 Borrowdale</td><td><code style="font-size:11px">IB-0773-9910</code></td><td><code style="font-size:11px">USD</code></td><td><strong>$54.00</strong></td><td><code style="font-size:11px;color:var(--ok-t)">IB-TXN-93410</code></td><td><span class="tag t-apv"><span class="td"></span>SETTLED</span></td></tr>
+          <tr><td><code style="color:var(--info);font-size:11px">INV-2025-4406</code></td><td style="font-size:12px;color:var(--ts)">14:10:44</td><td>Sh-22 Eastgate</td><td><code style="font-size:11px">IB-0772-4490</code></td><td><code style="font-size:11px">USD</code></td><td><strong>$68.00</strong></td><td><code style="font-size:11px;color:var(--ok-t)">IB-TXN-93406</code></td><td><span class="tag t-apv"><span class="td"></span>SETTLED</span></td></tr>
+          <tr><td><code style="color:var(--info);font-size:11px">INV-2025-4402</code></td><td style="font-size:12px;color:var(--ts)">13:58:22</td><td>Sh-07 Avondale</td><td><code style="font-size:11px">IB-0778-3312</code></td><td><code style="font-size:11px">USD</code></td><td><strong>$36.00</strong></td><td style="color:var(--wa-t)"><code style="font-size:11px">Pending</code></td><td><span class="tag t-pen"><span class="td"></span>PENDING</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- ═══════════════════════════ PROCUREMENT DASHBOARD ══════════════════ -->
+  <main class="main" id="v-proc-dashboard">
+    <div class="ph">
+      <div class="bc">CVS <span>/</span> Procurement <span>/</span> Dashboard</div>
+      <div class="pt">Procurement Dashboard</div>
+      <div class="pd">Supplier trends, product spend analysis and brand-store breakdown</div>
+      <div class="ptabs">
+        <button class="ptab on">Overview</button>
+        <button class="ptab">Supplier Trends</button>
+        <button class="ptab">Product Trends</button>
+        <button class="ptab">Supplier Portal</button>
+      </div>
+    </div>
+    <div class="cnt">
+      <div class="kg c4">
+        <div class="kc bl"><div class="kl">Total Supplier Spend (MTD)</div><div class="kv">$18,420</div><div class="kd up">↑ 8% vs Feb</div><div class="ki">💳</div></div>
+        <div class="kc gn"><div class="kl">Active Suppliers</div><div class="kv">16</div><div class="kd nt">2 pending verification</div><div class="ki">✓</div></div>
+        <div class="kc yw"><div class="kl">Top Category</div><div class="kv" style="font-size:16px;line-height:1.4">Maintenance</div><div class="kd nt">$6,840 MTD</div><div class="ki">🔧</div></div>
+        <div class="kc rd"><div class="kl">Supplier Alerts</div><div class="kv">3</div><div class="kd dn">Expiring certifications</div><div class="ki">⚠</div></div>
+      </div>
+
+      <!-- Supplier vs Product trends table (replacing bar graphs) -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <div>
+          <div class="tbbar"><div class="tbt">Top Suppliers by Spend — MTD</div></div>
+          <table class="dt">
+            <thead><tr><th>Supplier</th><th>Category</th><th>Total Spend</th><th>Brands</th><th>Trend</th></tr></thead>
+            <tbody>
+              <tr><td><strong>CleanPro</strong></td><td style="font-size:12px;color:var(--ts)">Cleaning</td><td><strong>$2,340</strong></td><td><span class="bc2 bci" style="margin-right:2px">CI</span><span class="bc2 bcp">PI</span></td><td style="color:var(--ok);font-family:'IBM Plex Mono',monospace;font-size:12px">↑ 12%</td></tr>
+              <tr><td><strong>Swift Maint.</strong></td><td style="font-size:12px;color:var(--ts)">Maintenance</td><td><strong>$3,120</strong></td><td><span class="bc2 bcp" style="margin-right:2px">PI</span><span class="bc2 bcs">ST</span></td><td style="color:var(--ok);font-family:'IBM Plex Mono',monospace;font-size:12px">↑ 5%</td></tr>
+              <tr><td><strong>ZimGas</strong></td><td style="font-size:12px;color:var(--ts)">Gas</td><td><strong>$1,870</strong></td><td><span class="bc2 bci" style="margin-right:2px">CI</span><span class="bc2 bcc">CR</span></td><td style="color:var(--er);font-family:'IBM Plex Mono',monospace;font-size:12px">↓ 3%</td></tr>
+              <tr><td><strong>OvenPro</strong></td><td style="font-size:12px;color:var(--ts)">Equipment</td><td><strong>$1,200</strong></td><td><span class="bc2 bcp">PI</span></td><td style="color:var(--ok);font-family:'IBM Plex Mono',monospace;font-size:12px">↑ 22%</td></tr>
+              <tr><td><strong>AquaFix</strong></td><td style="font-size:12px;color:var(--ts)">Plumbing</td><td><strong>$890</strong></td><td><span class="bc2 bci">CI</span></td><td style="color:var(--ts);font-family:'IBM Plex Mono',monospace;font-size:12px">0%</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div class="tbbar"><div class="tbt">Top Products by Value — MTD</div><button class="fb">By Value ▾</button></div>
+          <table class="dt">
+            <thead><tr><th>Product / Category</th><th>Total Value</th><th>Qty Requests</th><th>Brands</th><th>vs Last Month</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Maintenance &amp; Repairs</strong></td><td><strong>$6,840</strong></td><td>42</td><td><span style="font-size:11px;color:var(--ts)">All brands</span></td><td style="color:var(--ok);font-family:'IBM Plex Mono',monospace;font-size:12px">↑ 8%</td></tr>
+              <tr><td><strong>Gas &amp; Utilities</strong></td><td><strong>$3,210</strong></td><td>28</td><td><span class="bc2 bci" style="margin-right:2px">CI</span><span class="bc2 bcc">CR</span></td><td style="color:var(--er);font-family:'IBM Plex Mono',monospace;font-size:12px">↓ 2%</td></tr>
+              <tr><td><strong>Cleaning Supplies</strong></td><td><strong>$2,890</strong></td><td>34</td><td><span style="font-size:11px;color:var(--ts)">All brands</span></td><td style="color:var(--ok);font-family:'IBM Plex Mono',monospace;font-size:12px">↑ 5%</td></tr>
+              <tr><td><strong>Stationery</strong></td><td><strong>$1,040</strong></td><td>19</td><td><span class="bc2 bcp" style="margin-right:2px">PI</span><span class="bc2 bci">CI</span></td><td style="color:var(--ts);font-family:'IBM Plex Mono',monospace;font-size:12px">0%</td></tr>
+              <tr><td><strong>Equipment</strong></td><td><strong>$4,440</strong></td><td>12</td><td><span class="bc2 bcp">PI</span></td><td style="color:var(--ok);font-family:'IBM Plex Mono',monospace;font-size:12px">↑ 18%</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tbbar"><div class="tbt">Supplier vs Product — By Brand, Store &amp; Location</div><button class="fb">Brand ▾</button><button class="fb">Category ▾</button><button class="ab sec" style="height:34px;font-size:12px">Export</button></div>
+      <table class="dt">
+        <thead><tr><th>Supplier</th><th>Product Category</th><th>Brand</th><th>Shop</th><th>Location</th><th>Value</th><th>Qty</th><th>Last Transaction</th></tr></thead>
+        <tbody>
+          <tr><td><strong>CleanPro</strong></td><td>Cleaning Supplies</td><td><span class="bc2 bci">Chicken Inn</span></td><td>Sh-14</td><td>Borrowdale</td><td><strong>$280</strong></td><td>3</td><td style="font-size:12px;color:var(--ts)">23 Mar</td></tr>
+          <tr><td><strong>Swift Maint.</strong></td><td>Maintenance</td><td><span class="bc2 bcp">Pizza Inn</span></td><td>Sh-03</td><td>Avondale</td><td><strong>$450</strong></td><td>1</td><td style="font-size:12px;color:var(--ts)">23 Mar</td></tr>
+          <tr><td><strong>ZimGas</strong></td><td>Gas &amp; Utilities</td><td><span class="bc2 bcc">Creamy Inn</span></td><td>Sh-11</td><td>Highfield</td><td><strong>$310</strong></td><td>2</td><td style="font-size:12px;color:var(--ts)">23 Mar</td></tr>
+          <tr><td><strong>CleanPro</strong></td><td>Cleaning Supplies</td><td><span class="bc2 bcp">Pizza Inn</span></td><td>Sh-19</td><td>Eastgate</td><td><strong>$95</strong></td><td>1</td><td style="font-size:12px;color:var(--ts)">23 Mar</td></tr>
+          <tr><td><strong>OvenPro</strong></td><td>Equipment Repair</td><td><span class="bc2 bcp">Pizza Inn</span></td><td>Sh-08</td><td>Sam Levy</td><td><strong>$450</strong></td><td>1</td><td style="font-size:12px;color:var(--ts)">23 Mar</td></tr>
+          <tr><td><strong>ZimGas</strong></td><td>Gas &amp; Utilities</td><td><span class="bc2 bci">Chicken Inn</span></td><td>Sh-22</td><td>Eastgate</td><td><strong>$120</strong></td><td>1</td><td style="font-size:12px;color:var(--ts)">22 Mar</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- ═══════════════════════════ ADMIN DASHBOARD ═════════════════════════ -->
+  <main class="main" id="v-admin-dashboard">
+    <div class="ph">
+      <div class="bc">CVS <span>/</span> Admin <span>/</span> User Management</div>
+      <div class="pt">System Administration</div>
+      <div class="pd">Invite users, manage roles and monitor system access</div>
+      <div class="ptabs">
+        <button class="ptab on">Users &amp; Invites</button>
+        <button class="ptab">Roles &amp; Permissions</button>
+        <button class="ptab">System Audit</button>
+      </div>
+    </div>
+    <div class="cnt">
+      <div class="kg c4">
+        <div class="kc bl"><div class="kl">Total Users</div><div class="kv">48</div><div class="kd nt">Across all brands</div><div class="ki">👥</div></div>
+        <div class="kc yw"><div class="kl">Pending Invites</div><div class="kv">4</div><div class="kd nt">Awaiting acceptance</div><div class="ki">✉</div></div>
+        <div class="kc gn"><div class="kl">Active Sessions</div><div class="kv">12</div><div class="kd nt">Right now</div><div class="ki">🟢</div></div>
+        <div class="kc rd"><div class="kl">Failed Logins (24h)</div><div class="kv">3</div><div class="kd dn">Monitor</div><div class="ki">🔒</div></div>
+      </div>
+
+      <div class="tbbar">
+        <div class="tbt">User Invitations</div>
+        <button class="ab pri" onclick="openM('inviteM');toast('info','Invite sent','Email invitation dispatched to user')">+ Invite User</button>
+      </div>
+      <table class="dt">
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Brand / Scope</th><th>Shop</th><th>Invited By</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div style="font-weight:600">T. Ndlovu</div></td>
+            <td style="font-size:12px;color:var(--ts)">t.ndlovu@simbisa.co.zw</td>
+            <td><span class="tag t-rev"><span class="td"></span>BRAND MGR</span></td>
+            <td><span class="bc2 bci">Chicken Inn</span></td>
+            <td style="font-size:12px;color:var(--ts)">All shops</td>
+            <td style="font-size:12px;color:var(--ts)">S. Moyo (Admin)</td>
+            <td><span class="tag t-apv"><span class="td"></span>ACTIVE</span></td>
+            <td><div class="ra"><button class="rb ed">Edit</button><button class="rb rj">Revoke</button></div></td>
+          </tr>
+          <tr>
+            <td><div style="font-weight:600">C. Mutandwa</div></td>
+            <td style="font-size:12px;color:var(--ts)">c.mutandwa@simbisa.co.zw</td>
+            <td><span class="tag t-rev"><span class="td"></span>ACCOUNTANT</span></td>
+            <td><span class="bc2 bcp">Pizza Inn</span></td>
+            <td style="font-size:12px;color:var(--ts)">All shops</td>
+            <td style="font-size:12px;color:var(--ts)">S. Moyo (Admin)</td>
+            <td><span class="tag t-apv"><span class="td"></span>ACTIVE</span></td>
+            <td><div class="ra"><button class="rb ed">Edit</button><button class="rb rj">Revoke</button></div></td>
+          </tr>
+          <tr>
+            <td><div style="font-weight:600">J. Moyo</div></td>
+            <td style="font-size:12px;color:var(--ts)">j.moyo@simbisa.co.zw</td>
+            <td><span class="tag t-pen"><span class="td"></span>SHOP MGR</span></td>
+            <td><span class="bc2 bcr">Roco Mamma's</span></td>
+            <td style="font-size:12px;color:var(--ts)">Sh-05</td>
+            <td style="font-size:12px;color:var(--ts)">S. Moyo (Admin)</td>
+            <td><span class="tag t-pen"><span class="td"></span>PENDING</span></td>
+            <td><div class="ra"><button class="rb ap" onclick="toast('ok','Invite resent','Email dispatched to j.moyo@simbisa.co.zw')">Resend</button><button class="rb rj">Cancel</button></div></td>
+          </tr>
+          <tr>
+            <td><div style="font-weight:600">A. Sibanda</div></td>
+            <td style="font-size:12px;color:var(--ts)">a.sibanda@simbisa.co.zw</td>
+            <td><span class="tag t-exc"><span class="td"></span>PROCUREMENT</span></td>
+            <td style="color:var(--ts);font-size:12px">Head Office</td>
+            <td style="font-size:12px;color:var(--ts)">N/A</td>
+            <td style="font-size:12px;color:var(--ts)">S. Moyo (Admin)</td>
+            <td><span class="tag t-pen"><span class="td"></span>PENDING</span></td>
+            <td><div class="ra"><button class="rb ap" onclick="toast('ok','Invite resent','Email dispatched to a.sibanda@simbisa.co.zw')">Resend</button><button class="rb rj">Cancel</button></div></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="height:20px"></div>
+      <div class="tbbar"><div class="tbt">System Audit Log — All Users</div><button class="fb">Role ▾</button><button class="fb">Brand ▾</button></div>
+      <div style="background:var(--l1);border:1px solid var(--bs);padding:8px 14px">
+        <div class="log-e"><div class="log-dot" style="background:var(--int)"></div><div class="log-time">23 Mar 14:32</div><div><div class="log-txt"><strong>USER LOGIN</strong> — T. Ndlovu · Role: Brand Manager · Brand: Chicken Inn</div><div class="log-user">IP: 196.xx.xx.xx · Chrome / Windows</div></div><span class="bc2 bci">Chicken Inn</span></div>
+        <div class="log-e"><div class="log-dot" style="background:var(--ok)"></div><div class="log-time">23 Mar 13:18</div><div><div class="log-txt"><strong>INVITE SENT</strong> — J. Moyo invited as Shop Manager · Roco Mamma's Sh-05</div><div class="log-user">S. Moyo (Admin)</div></div><span class="bc2 bcr">Roco Mamma's</span></div>
+        <div class="log-e"><div class="log-dot" style="background:var(--er)"></div><div class="log-time">23 Mar 12:11</div><div><div class="log-txt"><strong>FAILED LOGIN</strong> — unknown@mail.com · 3 attempts</div><div class="log-user">IP: 102.xx.xx.xx · Blocked after 3 attempts</div></div><span class="bc2" style="background:#fff1f1;color:var(--er)">SYSTEM</span></div>
+        <div class="log-e"><div class="log-dot" style="background:var(--ok)"></div><div class="log-time">23 Mar 09:05</div><div><div class="log-txt"><strong>SUPPLIER ACTIVATED</strong> — CleanPro Supplies · TIN: ZW-TIN-20012345</div><div class="log-user">R. Chikwanda (Procurement)</div></div><span class="bc2" style="background:var(--pur-bg);color:var(--pur)">SYSTEM</span></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══════════════════════════ EXECUTIVE DASHBOARD ════════════════════ -->
+  <main class="main" id="v-exec-dashboard">
+    <div class="ph">
+      <div class="bc">CVS <span>/</span> Executive <span>/</span> Overview</div>
+      <div class="pt">Executive Dashboard — Simbisa Group</div>
+      <div class="pd">Group-wide petty cash, InnBucks sales and supplier intelligence · March 2025</div>
+      <div class="ptabs">
+        <button class="ptab on">Group Overview</button>
+        <button class="ptab">Brand Breakdown</button>
+        <button class="ptab">InnBucks Sales</button>
+        <button class="ptab">Supplier Trends</button>
+      </div>
+    </div>
+    <div class="cnt">
+      <!-- Top KPIs -->
+      <div class="kg c4">
+        <div class="kc bl"><div class="kl">Total Petty Cash Disbursed (MTD)</div><div class="kv">$18,420</div><div class="kd up">↑ 8% vs February</div><div class="ki">💳</div></div>
+        <div class="kc gn"><div class="kl">InnBucks Sales — All Brands</div><div class="kv">$24,180</div><div class="kd up">↑ Today's total</div><div class="ki">📈</div></div>
+        <div class="kc yw"><div class="kl">Total Budget (MTD)</div><div class="kv">$28,000</div><div class="kd nt">65.8% utilised</div><div class="ki">📊</div></div>
+        <div class="kc rd"><div class="kl">Threshold Alerts</div><div class="kv">4</div><div class="kd dn">Shops over 80% limit</div><div class="ki">🚨</div></div>
+      </div>
+
+      <!-- Expenditure by brand table -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <div>
+          <div class="tbbar"><div class="tbt">Expenditure — All Brands (MTD)</div></div>
+          <table class="dt">
+            <thead><tr><th>Brand</th><th>Budget</th><th>Disbursed</th><th>Remaining</th><th>% Used</th><th>Alerts</th></tr></thead>
+            <tbody>
+              <tr><td><span class="bc2 bci">Chicken Inn</span></td><td>$8,000</td><td>$4,880</td><td>$3,120</td><td style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--wa-t)">61%</td><td><span class="tag t-pen" style="font-size:9px">1</span></td></tr>
+              <tr><td><span class="bc2 bcp">Pizza Inn</span></td><td>$7,200</td><td>$5,328</td><td>$1,872</td><td style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--er)">74%</td><td><span class="tag t-alert" style="font-size:9px">2</span></td></tr>
+              <tr><td><span class="bc2 bcc">Creamy Inn</span></td><td>$4,000</td><td>$1,920</td><td>$2,080</td><td style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--ok-t)">48%</td><td style="color:var(--ts);font-size:12px">—</td></tr>
+              <tr><td><span class="bc2 bcn">Nando's</span></td><td>$3,200</td><td>$2,624</td><td>$576</td><td style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--er)">82%</td><td><span class="tag t-alert" style="font-size:9px">1</span></td></tr>
+              <tr><td><span class="bc2 bcs">Steers</span></td><td>$2,400</td><td>$1,320</td><td>$1,080</td><td style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--ok-t)">55%</td><td style="color:var(--ts);font-size:12px">—</td></tr>
+              <tr><td><span class="bc2 bcr">Roco Mamma's</span></td><td>$2,000</td><td>$1,380</td><td>$620</td><td style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--wa-t)">69%</td><td style="color:var(--ts);font-size:12px">—</td></tr>
+              <tr><td><span class="bc2 bcob">Ocean Basket</span></td><td>$1,600</td><td>$688</td><td>$912</td><td style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--ok-t)">43%</td><td style="color:var(--ts);font-size:12px">—</td></tr>
+              <tr><td><span class="bc2 bchf">Hefelies</span></td><td>$1,200</td><td>$444</td><td>$756</td><td style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--ok-t)">37%</td><td style="color:var(--ts);font-size:12px">—</td></tr>
+              <tr><td><span class="bc2 bcpa">Pastino's</span></td><td>$1,400</td><td>$812</td><td>$588</td><td style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--ok-t)">58%</td><td style="color:var(--ts);font-size:12px">—</td></tr>
+              <tr style="background:var(--l2)"><td><strong>TOTAL</strong></td><td><strong>$31,000</strong></td><td><strong>$18,420</strong></td><td><strong>$12,580</strong></td><td style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--wa-t)">59.4%</td><td><span class="tag t-alert" style="font-size:9px">4</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div class="tbbar"><div class="tbt">InnBucks Sales — All Brands Today</div><div style="display:flex;align-items:center;gap:5px"><div style="width:6px;height:6px;border-radius:50%;background:var(--ok);animation:blink 1.5s infinite"></div><span style="font-size:10px;color:var(--ok-t);font-family:'IBM Plex Mono',monospace">LIVE</span></div></div>
+          <table class="dt">
+            <thead><tr><th>Brand</th><th>Today Sales</th><th>Transactions</th><th>Avg Basket</th><th>vs Yesterday</th></tr></thead>
+            <tbody>
+              <tr><td><span class="bc2 bci">Chicken Inn</span></td><td><strong>$8,420</strong></td><td>98</td><td>$85.92</td><td style="color:var(--ok);font-family:'IBM Plex Mono',monospace;font-size:12px">↑ 6%</td></tr>
+              <tr><td><span class="bc2 bcp">Pizza Inn</span></td><td><strong>$6,910</strong></td><td>74</td><td>$93.38</td><td style="color:var(--ok);font-family:'IBM Plex Mono',monospace;font-size:12px">↑ 2%</td></tr>
+              <tr><td><span class="bc2 bcc">Creamy Inn</span></td><td><strong>$3,840</strong></td><td>52</td><td>$73.85</td><td style="color:var(--er);font-family:'IBM Plex Mono',monospace;font-size:12px">↓ 4%</td></tr>
+              <tr><td><span class="bc2 bcn">Nando's</span></td><td><strong>$2,890</strong></td><td>31</td><td>$93.23</td><td style="color:var(--ok);font-family:'IBM Plex Mono',monospace;font-size:12px">↑ 11%</td></tr>
+              <tr><td><span class="bc2 bcs">Steers</span></td><td><strong>$2,120</strong></td><td>29</td><td>$73.10</td><td style="color:var(--ts);font-family:'IBM Plex Mono',monospace;font-size:12px">0%</td></tr>
+              <tr><td><span class="bc2 bcr">Roco Mamma's</span></td><td><strong>—</strong></td><td style="color:var(--ts);font-size:12px">Not live</td><td style="color:var(--ts);font-size:12px">—</td><td style="color:var(--ts);font-size:12px">—</td></tr>
+              <tr style="background:var(--l2)"><td><strong>TOTAL</strong></td><td><strong>$24,180</strong></td><td><strong>284</strong></td><td><strong>$85.14</strong></td><td style="color:var(--ok);font-family:'IBM Plex Mono',monospace;font-size:12px">↑ 4.2%</td></tr>
+            </tbody>
+          </table>
+          <div style="height:16px"></div>
+          <div class="tbbar"><div class="tbt">Supplier Trends — Group Level</div></div>
+          <table class="dt">
+            <thead><tr><th>Supplier</th><th>MTD Spend</th><th>YTD Spend</th><th>Brands</th><th>Trend</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Swift Maintenance</strong></td><td><strong>$3,120</strong></td><td>$18,920</td><td><span style="font-size:11px;color:var(--ts)">PI, ST, CI</span></td><td style="color:var(--ok);font-family:'IBM Plex Mono',monospace;font-size:12px">↑ 5%</td></tr>
+              <tr><td><strong>CleanPro Supplies</strong></td><td><strong>$2,340</strong></td><td>$14,100</td><td><span style="font-size:11px;color:var(--ts)">CI, PI, ND</span></td><td style="color:var(--ok);font-family:'IBM Plex Mono',monospace;font-size:12px">↑ 12%</td></tr>
+              <tr><td><strong>ZimGas Ltd</strong></td><td><strong>$1,870</strong></td><td>$11,220</td><td><span style="font-size:11px;color:var(--ts)">CI, CR, ND</span></td><td style="color:var(--er);font-family:'IBM Plex Mono',monospace;font-size:12px">↓ 3%</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+</div><!-- /APP -->
+
+<!-- ══════════════════════════════════════════ MODALS ═════════════════════ -->
+
+<!-- InnBucks Pay -->
+<div class="ov" id="payM">
+  <div class="modal">
+    <div class="mh"><div><div class="mt">Approve &amp; Pay via InnBucks</div><div class="ms">PC-0041 · K. Mutasa · Chicken Inn Sh-14</div></div><button class="mx" onclick="closeM('payM')">×</button></div>
+    <div class="mb">
+      <div class="ibp" style="margin-bottom:0">
+        <div class="ibh"><div class="ibl">InnBucks</div><div><div style="font-size:13px;font-weight:600">Cashless Disbursement</div><div class="ibs">API Connected</div></div></div>
+        <div class="ps">
+          <div><div class="pfl">Recipient</div><div class="pfv">K. Mutasa</div></div>
+          <div><div class="pfl">InnBucks Number</div><div class="pfv" style="font-family:'IBM Plex Mono',monospace;font-size:13px">IB-0773-8812</div></div>
+          <div><div class="pfl">Amount (USD)</div><div class="pfv amt">$180.00</div></div>
+        </div>
+        <div style="background:var(--l2);padding:10px"><div style="font-size:10px;color:var(--ts);font-family:'IBM Plex Mono',monospace;margin-bottom:3px">SUPPLIER / PURPOSE</div><div style="font-size:13px">CleanPro Supplies · Cleaning supplies, Sh-14 Borrowdale</div></div>
+      </div>
+      <div style="margin-top:11px;padding:10px;background:var(--wa-bg);border-left:3px solid var(--wa)"><div style="font-size:11px;color:var(--wa-t);font-weight:600">Confirm before disbursing</div><div style="font-size:11px;color:var(--ts);margin-top:2px">Payment is immediate and irreversible. Logged in audit trail.</div></div>
+    </div>
+    <div class="mf"><button class="ab sec" onclick="closeM('payM')">Cancel</button><button class="ab pri" onclick="closeM('payM');toast('ok','Payment sent','$180 disbursed to IB-0773-8812 via InnBucks')">Confirm &amp; Pay $180.00</button></div>
+  </div>
+</div>
+
+<!-- Batch Pay -->
+<div class="ov" id="batchPayM">
+  <div class="modal lg">
+    <div class="mh"><div><div class="mt">Batch InnBucks Payment</div><div class="ms">Review and confirm all selected payments</div></div><button class="mx" onclick="closeM('batchPayM')">×</button></div>
+    <div class="mb">
+      <div style="background:var(--info-bg);border-left:3px solid var(--int);padding:10px 13px;margin-bottom:14px"><div style="font-size:12px;color:var(--info);font-weight:600">3 requests selected for batch payment</div><div style="font-size:11px;color:var(--ts);margin-top:2px">Total: <strong>$500.00</strong> · All funds disbursed simultaneously via InnBucks</div></div>
+      <table class="dt" style="margin-bottom:14px">
+        <thead><tr><th>ID</th><th>Manager</th><th>Shop</th><th>InnBucks Number</th><th>Amount</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><code style="color:var(--info);font-size:11px">PC-0041</code></td><td>K. Mutasa</td><td>Sh-14</td><td><code style="font-size:11px">IB-0773-8812</code></td><td><strong>$180</strong></td><td><span class="tag t-exc"><span class="td"></span>EXCEPTION</span></td></tr>
+          <tr><td><code style="color:var(--info);font-size:11px">PC-0039</code></td><td>P. Chiriseri</td><td>Sh-07</td><td><code style="font-size:11px">IB-0771-2244</code></td><td><strong>$200</strong></td><td><span class="tag t-apv"><span class="td"></span>APPROVED</span></td></tr>
+          <tr><td><code style="color:var(--info);font-size:11px">PC-0038</code></td><td>M. Dube</td><td>Sh-22</td><td><code style="font-size:11px">IB-0774-3344</code></td><td><strong>$120</strong></td><td><span class="tag t-apv"><span class="td"></span>APPROVED</span></td></tr>
+          <tr style="background:var(--l2)"><td colspan="4"><strong>TOTAL</strong></td><td><strong>$500.00</strong></td><td></td></tr>
+        </tbody>
+      </table>
+      <div style="padding:10px;background:var(--wa-bg);border-left:3px solid var(--wa)"><div style="font-size:11px;color:var(--wa-t);font-weight:600">PC-0041 includes an exception approval. This will be logged.</div></div>
+    </div>
+    <div class="mf"><button class="ab sec" onclick="closeM('batchPayM')">Cancel</button><button class="ab pri" onclick="closeM('batchPayM');toast('ok','Batch payment complete','3 payments totalling $500 sent via InnBucks')">Confirm Batch Payment — $500.00</button></div>
+  </div>
+</div>
+
+<!-- Validate -->
+<div class="ov" id="validateM">
+  <div class="modal">
+    <div class="mh"><div><div class="mt">Validate Request</div><div class="ms">Forward to Brand Manager for approval</div></div><button class="mx" onclick="closeM('validateM')">×</button></div>
+    <div class="mb">
+      <div style="display:grid;gap:0;margin-bottom:13px">
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bs)"><span style="color:var(--ts);font-size:12px">Manager</span><span>T. Ndlovu</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bs)"><span style="color:var(--ts);font-size:12px">Supplier</span><span>OvenPro Zimbabwe</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bs)"><span style="color:var(--ts);font-size:12px">Amount Requested</span><span style="font-weight:700;color:var(--int);font-size:16px;font-family:'IBM Plex Sans Condensed',sans-serif">$450.00</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0"><span style="color:var(--ts);font-size:12px">Budget Status</span><span style="color:var(--er);font-weight:600">Over limit — exception required</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label class="fl">Adjusted Amount</label><input class="fin" type="number" value="450"/></div>
+        <div><label class="fl">Notes for Brand Manager</label><input class="fin" type="text" placeholder="Optional note"/></div>
+      </div>
+    </div>
+    <div class="mf"><button class="ab sec" onclick="closeM('validateM')">Cancel</button><button class="ab pri" onclick="closeM('validateM');toast('ok','Request validated','Forwarded to Brand Manager for approval')">Forward to Brand Manager</button></div>
+  </div>
+</div>
+
+<!-- Exception Request (Manager) -->
+<div class="ov" id="excM">
+  <div class="modal">
+    <div class="mh"><div><div class="mt">Request Exception Approval</div><div class="ms">PC-0041 · Sh-14 over monthly threshold</div></div><button class="mx" onclick="closeM('excM')">×</button></div>
+    <div class="mb">
+      <div style="background:var(--er-bg);border-left:3px solid var(--er);padding:11px;margin-bottom:13px"><div style="font-size:12px;font-weight:700;color:var(--er-t);margin-bottom:3px">Threshold Exceeded</div><div style="font-size:12px;color:var(--ts)">Sh-14 at $720 of $800 limit (90%). Request of $180 would bring total to $900 — $100 over limit.</div></div>
+      <div><label class="fl">Exception Reason (required)</label><input class="fin" type="text" placeholder="e.g. Critical operational requirement"/></div>
+    </div>
+    <div class="mf"><button class="ab sec" onclick="closeM('excM')">Cancel</button><button class="ab pri" onclick="closeM('excM');toast('wa','Exception request submitted','Awaiting Brand Manager approval')">Submit Exception Request</button></div>
+  </div>
+</div>
+
+<!-- Exception Approve (Brand Manager) -->
+<div class="ov" id="excApproveM">
+  <div class="modal">
+    <div class="mh"><div><div class="mt">Approve Exception</div><div class="ms">PC-0041 · Sh-14 over limit</div></div><button class="mx" onclick="closeM('excApproveM')">×</button></div>
+    <div class="mb">
+      <div style="background:var(--er-bg);border-left:3px solid var(--er);padding:11px;margin-bottom:13px"><div style="font-size:12px;font-weight:700;color:var(--er-t);margin-bottom:3px">Threshold Override Required</div><div style="font-size:12px;color:var(--ts)">Sh-14 at 90% of $800 limit. Approving $180 brings total to $900. Exception will be logged.</div></div>
+      <div><label class="fl">Approval Notes</label><input class="fin" type="text" placeholder="Reason for exception approval"/></div>
+      <div style="margin-top:11px;font-size:11px;color:var(--ts);font-family:'IBM Plex Mono',monospace;padding:9px;background:var(--l2);border:1px solid var(--bs)">This exception will appear in audit log, monthly reconciliation report, and executive dashboard.</div>
+    </div>
+    <div class="mf"><button class="ab sec" onclick="closeM('excApproveM')">Cancel</button><button class="ab dan" onclick="closeM('excApproveM')">Reject</button><button class="ab" onclick="closeM('excApproveM');toast('ok','Exception approved and paid','PC-0041 $180 disbursed via InnBucks')" style="background:var(--pur);border-color:var(--pur);color:#fff;height:42px;padding:0 20px;font-size:13px">Approve Exception &amp; Pay</button></div>
+  </div>
+</div>
+
+<!-- Submit Request -->
+<div class="ov" id="submitM">
+  <div class="modal">
+    <div class="mh"><div class="mt">Review &amp; Submit Request</div><button class="mx" onclick="closeM('submitM')">×</button></div>
+    <div class="mb">
+      <div style="display:grid;gap:0">
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bs)"><span style="color:var(--ts);font-size:12px">Brand / Shop</span><span><span class="bc2 bci">Chicken Inn</span> Sh-14</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bs)"><span style="color:var(--ts);font-size:12px">Supplier</span><span>CleanPro Supplies</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bs)"><span style="color:var(--ts);font-size:12px">Category</span><span>Cleaning Supplies</span></div>
+        <div style="display:flex;justify-content:space-between;padding:7px 0"><span style="color:var(--ts);font-size:12px">Amount</span><span style="font-size:20px;font-weight:700;color:var(--int);font-family:'IBM Plex Sans Condensed',sans-serif">$180.00</span></div>
+      </div>
+      <div style="margin-top:11px;padding:10px;background:var(--er-bg);border-left:3px solid var(--er)"><div style="font-size:11px;color:var(--er-t);font-weight:600">⚠ Threshold Notice</div><div style="font-size:11px;color:var(--ts);margin-top:2px">Sh-14 at 90% of monthly limit. This request will trigger exception review by Brand Accountant.</div></div>
+    </div>
+    <div class="mf"><button class="ab sec" onclick="closeM('submitM')">Back</button><button class="ab pri" onclick="closeM('submitM');toast('ok','Request submitted','PC-0042 sent to Brand Accountant for review')">Submit Request</button></div>
+  </div>
+</div>
+
+<!-- Budget Management (Accountant) -->
+<div class="ov" id="budgetM">
+  <div class="modal lg">
+    <div class="mh"><div><div class="mt">Set Shop Budgets — Pizza Inn</div><div class="ms">Set monthly petty cash limits per shop</div></div><button class="mx" onclick="closeM('budgetM')">×</button></div>
+    <div class="mb">
+      <table class="dt">
+        <thead><tr><th>Shop</th><th>Location</th><th>Current Budget</th><th>New Monthly Budget (USD)</th><th>Category Caps</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Sh-03</strong></td><td>Avondale</td><td>$1,200</td><td><input class="fin" type="number" value="1200" style="width:120px"/></td><td><input class="fin" type="text" placeholder="e.g. Cleaning $300" style="width:180px"/></td></tr>
+          <tr><td><strong>Sh-19</strong></td><td>Eastgate</td><td>$1,000</td><td><input class="fin" type="number" value="1000" style="width:120px"/></td><td><input class="fin" type="text" placeholder="Optional" style="width:180px"/></td></tr>
+          <tr><td><strong>Sh-08</strong></td><td>Sam Levy</td><td>$900</td><td><input class="fin" type="number" value="900" style="width:120px"/></td><td><input class="fin" type="text" placeholder="Optional" style="width:180px"/></td></tr>
+          <tr><td><strong>Sh-22</strong></td><td>Borrowdale</td><td>$1,100</td><td><input class="fin" type="number" value="1100" style="width:120px"/></td><td><input class="fin" type="text" placeholder="Optional" style="width:180px"/></td></tr>
+          <tr><td><strong>Sh-11</strong></td><td>Highfield</td><td>$800</td><td><input class="fin" type="number" value="800" style="width:120px"/></td><td><input class="fin" type="text" placeholder="Optional" style="width:180px"/></td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:13px;padding:10px;background:var(--info-bg);border-left:3px solid var(--int)"><div style="font-size:11px;color:var(--info)">Threshold alerts trigger at 80%. Shops at 80-99% show MONITOR, at 90%+ trigger exception workflow. All budget changes are logged.</div></div>
+    </div>
+    <div class="mf"><button class="ab sec" onclick="closeM('budgetM')">Cancel</button><button class="ab pri" onclick="closeM('budgetM');toast('ok','Budgets updated','Monthly shop budgets saved for Pizza Inn')">Save Budgets</button></div>
+  </div>
+</div>
+
+<!-- Invite User (Admin) -->
+<div class="ov" id="inviteM">
+  <div class="modal">
+    <div class="mh"><div><div class="mt">Invite New User</div><div class="ms">Send email invitation with role and brand access</div></div><button class="mx" onclick="closeM('inviteM')">×</button></div>
+    <div class="mb">
+      <div class="fg">
+        <div class="fi"><label class="fl">Full Name</label><input class="fin" placeholder="First Last"/></div>
+        <div class="fi"><label class="fl">Email Address</label><input class="fin" type="email" placeholder="name@simbisa.co.zw"/></div>
+        <div class="fi"><label class="fl">Role</label><select class="fsel"><option>Shop Manager</option><option>Brand Accountant</option><option>Brand Manager</option><option>Procurement</option><option>Executive</option><option>Admin</option></select></div>
+        <div class="fi"><label class="fl">Brand</label><select class="fsel"><option>All Brands</option><option>Chicken Inn</option><option>Pizza Inn</option><option>Creamy Inn</option><option>Nando's</option><option>Steers</option><option>Roco Mamma's</option><option>Ocean Basket</option><option>Hefelies</option><option>Pastino's</option></select></div>
+        <div class="fi"><label class="fl">Shop (if Manager)</label><select class="fsel"><option>N/A</option><option>Sh-14 Borrowdale</option><option>Sh-07 Avondale</option><option>Sh-22 Eastgate</option><option>Sh-03 Avondale</option><option>Sh-11 Highfield</option></select></div>
+        <div class="fi"><label class="fl">Monthly Budget Limit</label><input class="fin" type="number" placeholder="e.g. 800"/><div class="fh">For Shop Managers only</div></div>
+        <div class="fi full"><label class="fl">Note to User (appears in invite email)</label><input class="fin" type="text" placeholder="Welcome to CVS. Click the link to set your password."/></div>
+      </div>
+    </div>
+    <div class="mf"><button class="ab sec" onclick="closeM('inviteM')">Cancel</button><button class="ab pri" onclick="closeM('inviteM');toast('ok','Invitation sent','Email dispatched with login link and role access')">Send Invitation</button></div>
+  </div>
+</div>
+
+<!-- Statement PDF -->
+<div class="ov" id="stmtM">
+  <div class="modal lg">
+    <div class="mh"><div><div class="mt">InnBucks Sales Statement</div><div class="ms">Generate PDF statement with filters</div></div><button class="mx" onclick="closeM('stmtM')">×</button></div>
+    <div class="mb">
+      <div class="fg" style="margin-bottom:16px">
+        <div class="fi"><label class="fl">Brand</label><select class="fsel"><option>All Brands</option><option>Chicken Inn</option><option>Pizza Inn</option><option>Creamy Inn</option></select></div>
+        <div class="fi"><label class="fl">Shop</label><select class="fsel"><option>All Shops</option><option>Sh-14 Borrowdale</option><option>Sh-22 Eastgate</option></select></div>
+        <div class="fi"><label class="fl">From</label><input class="fin" type="date" value="2025-03-01"/></div>
+        <div class="fi"><label class="fl">To</label><input class="fin" type="date" value="2025-03-23"/></div>
+        <div class="fi"><label class="fl">Status</label><select class="fsel"><option>All</option><option>Settled</option><option>Pending</option><option>Reversed</option></select></div>
+        <div class="fi"><label class="fl">Currency</label><select class="fsel"><option>USD</option></select></div>
+      </div>
+      <!-- Preview -->
+      <div style="border:1px solid var(--bs);background:#fff;padding:22px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:3px solid #161616">
+          <div style="display:flex;align-items:center;gap:9px"><div style="width:30px;height:30px;background:var(--int);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:#fff;font-family:'IBM Plex Mono',monospace">CVS</div><div><div style="font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:700;font-size:15px">SIMBISA BRANDS</div><div style="font-size:10px;color:#525252;font-family:'IBM Plex Mono',monospace">Cash Verification System</div></div></div>
+          <div style="text-align:right"><div style="font-family:'IBM Plex Sans Condensed',sans-serif;font-size:20px;font-weight:700">INNBUCKS STATEMENT</div><div style="font-size:10px;color:#525252;font-family:'IBM Plex Mono',monospace;margin-top:3px">Ref: STMT-2025-03-CI-ALL · Period: 01 Mar — 23 Mar 2025</div></div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:#f4f4f4"><th style="padding:7px 9px;text-align:left;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#525252;text-transform:uppercase;border-bottom:1px solid #e0e0e0">Invoice No.</th><th style="padding:7px 9px;text-align:left;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#525252;text-transform:uppercase;border-bottom:1px solid #e0e0e0">Date</th><th style="padding:7px 9px;text-align:left;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#525252;text-transform:uppercase;border-bottom:1px solid #e0e0e0">Brand</th><th style="padding:7px 9px;text-align:left;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#525252;text-transform:uppercase;border-bottom:1px solid #e0e0e0">Shop</th><th style="padding:7px 9px;text-align:left;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#525252;text-transform:uppercase;border-bottom:1px solid #e0e0e0">Ccy</th><th style="padding:7px 9px;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#525252;text-transform:uppercase;border-bottom:1px solid #e0e0e0">Amount</th><th style="padding:7px 9px;text-align:left;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#525252;text-transform:uppercase;border-bottom:1px solid #e0e0e0">InnBucks Ref</th><th style="padding:7px 9px;text-align:left;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:#525252;text-transform:uppercase;border-bottom:1px solid #e0e0e0">Status</th></tr></thead>
+          <tbody>
+            <tr style="border-bottom:1px solid #f4f4f4"><td style="padding:6px 9px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#0043ce">INV-2025-4412</td><td style="padding:6px 9px;color:#525252">23 Mar 14:31</td><td style="padding:6px 9px">Chicken Inn</td><td style="padding:6px 9px">Sh-22</td><td style="padding:6px 9px;font-family:'IBM Plex Mono',monospace">USD</td><td style="padding:6px 9px;text-align:right;font-weight:600">$142.00</td><td style="padding:6px 9px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#24a148">IB-TXN-93412</td><td style="padding:6px 9px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#0e6027">SETTLED</td></tr>
+            <tr style="background:#f9f9f9;border-bottom:1px solid #f4f4f4"><td style="padding:6px 9px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#0043ce">INV-2025-4411</td><td style="padding:6px 9px;color:#525252">23 Mar 14:28</td><td style="padding:6px 9px">Pizza Inn</td><td style="padding:6px 9px">Sh-03</td><td style="padding:6px 9px;font-family:'IBM Plex Mono',monospace">USD</td><td style="padding:6px 9px;text-align:right;font-weight:600">$89.50</td><td style="padding:6px 9px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#24a148">IB-TXN-93411</td><td style="padding:6px 9px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#0e6027">SETTLED</td></tr>
+            <tr style="border-bottom:1px solid #f4f4f4"><td style="padding:6px 9px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#0043ce">INV-2025-4408</td><td style="padding:6px 9px;color:#525252">23 Mar 14:18</td><td style="padding:6px 9px">Creamy Inn</td><td style="padding:6px 9px">Sh-11</td><td style="padding:6px 9px;font-family:'IBM Plex Mono',monospace">USD</td><td style="padding:6px 9px;text-align:right;font-weight:600">$36.00</td><td style="padding:6px 9px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#684e00">Pending</td><td style="padding:6px 9px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#684e00">PENDING</td></tr>
+          </tbody>
+          <tfoot><tr style="background:#161616"><td colspan="5" style="padding:9px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#f4f4f4;text-transform:uppercase;letter-spacing:.05em">TOTAL USD</td><td style="padding:9px;text-align:right;font-family:'IBM Plex Sans Condensed',sans-serif;font-size:16px;font-weight:700;color:#78a9ff">$24,180.00</td><td colspan="2" style="padding:9px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#78a9ff">306 settled · 4 pending · 2 reversed</td></tr></tfoot>
+        </table>
+        <div style="margin-top:14px;padding-top:10px;border-top:1px solid #e0e0e0;display:flex;justify-content:space-between;font-size:10px;color:#8d8d8d;font-family:'IBM Plex Mono',monospace"><span>Simbisa Brands Ltd · CVS InnBucks Statement · CONFIDENTIAL</span><span>Cash Verification System · Powered by InnBucks API</span></div>
+      </div>
+    </div>
+    <div class="mf"><button class="ab sec" onclick="closeM('stmtM')">Cancel</button><button class="ab sec" onclick="window.print()">Print Preview</button><button class="ab pri" onclick="closeM('stmtM');toast('ok','Statement generated','InnBucks PDF statement downloaded')">Download PDF</button></div>
+  </div>
+</div>
+
+<!-- Notifications -->
+<div class="ov" id="notifM">
+  <div class="modal">
+    <div class="mh"><div class="mt">Notifications</div><button class="mx" onclick="closeM('notifM')">×</button></div>
+    <div class="mb" style="padding:0">
+      <div style="padding:11px 18px;border-bottom:1px solid var(--bs);display:flex;gap:10px"><div style="color:var(--er);font-size:15px">🚨</div><div><div style="font-size:13px;font-weight:600">THRESHOLD ALERT — Sh-14 at 90%</div><div style="font-size:11px;color:var(--ts);margin-top:1px">5 minutes ago</div></div></div>
+      <div style="padding:11px 18px;border-bottom:1px solid var(--bs);display:flex;gap:10px"><div style="color:var(--ok);font-size:15px">✓</div><div><div style="font-size:13px;font-weight:600">PC-0038 paid — $250 via InnBucks</div><div style="font-size:11px;color:var(--ts);margin-top:1px">2 hours ago</div></div></div>
+      <div style="padding:11px 18px;border-bottom:1px solid var(--bs);display:flex;gap:10px"><div style="color:var(--wa-t);font-size:15px">⚠</div><div><div style="font-size:13px;font-weight:600">FastFix Repairs pending verification</div><div style="font-size:11px;color:var(--ts);margin-top:1px">3 hours ago</div></div></div>
+      <div style="padding:11px 18px;display:flex;gap:10px"><div style="color:var(--info);font-size:15px">ℹ</div><div><div style="font-size:13px;font-weight:600">Cron reconciliation complete</div><div style="font-size:11px;color:var(--ts);margin-top:1px">Today 00:01</div></div></div>
+    </div>
+    <div class="mf"><button class="ab pri" onclick="closeM('notifM')">Mark all read</button></div>
+  </div>
+</div>
+
+<script>
+// ── ROLE CONFIGS ──────────────────────────────────────────────────────────────
+const ROLES = {
+  manager: {
+    label:'Shop Manager', name:'K. Mutasa', brand:'Chicken Inn', color:'#0f62fe', code:'CI',
+    nav:[
+      {v:'mgr-dashboard',  ic:'M0 0h7v7H0zm9 0h7v7H9zM0 9h7v7H0zm9 0h7v7H9z', lb:'Dashboard'},
+      {v:'mgr-new-request',ic:'M9 7V1H7v6H1v2h6v6h2V9h6V7z',                   lb:'New Request'},
+      {v:'mgr-dashboard',  ic:'M1 1h14v2H1zm0 4h9v2H1zm0 4h11v2H1zm0 4h7v2H1z',lb:'My Requests', badge:'3'},
+    ]
+  },
+  accountant: {
+    label:'Brand Accountant', name:'C. Mutandwa', brand:'Pizza Inn', color:'#da1e28', code:'PI',
+    nav:[
+      {v:'acc-dashboard',  ic:'M0 0h7v7H0zm9 0h7v7H9zM0 9h7v7H0zm9 0h7v7H9z', lb:'Dashboard', badge:'7', ba:true},
+      {v:'acc-dashboard',  ic:'M14 2H4v12h10zM6 5h6v1H6zm0 3h6v1H6zm0 3h4v1H6z',lb:'Audit Log'},
+    ]
+  },
+  brandmgr: {
+    label:'Brand Manager', name:'T. Ndlovu', brand:'Chicken Inn', color:'#0f62fe', code:'CI',
+    nav:[
+      {v:'bm-dashboard',   ic:'M0 0h7v7H0zm9 0h7v7H9zM0 9h7v7H0zm9 0h7v7H9z', lb:'Dashboard', badge:'5', ba:true},
+      {v:'bm-dashboard',   ic:'M1 1h14v3H1zm0 5h14v3H1zm0 5h14v3H1z',          lb:'InnBucks Sales', badge:'Live', live:true},
+      {v:'bm-dashboard',   ic:'M14 2H4v12h10zM6 5h6v1H6zm0 3h6v1H6zm0 3h4v1H6z',lb:'Audit Log'},
+    ]
+  },
+  procurement: {
+    label:'Procurement', name:'R. Chikwanda', brand:'Head Office', color:'#6929c4', code:'HO',
+    nav:[
+      {v:'proc-dashboard', ic:'M0 0h7v7H0zm9 0h7v7H9zM0 9h7v7H0zm9 0h7v7H9z', lb:'Procurement Dashboard'},
+      {v:'proc-dashboard', ic:'M8 1a3 3 0 100 6A3 3 0 008 1zm0 8c-3.3 0-6 1.3-6 3v1h12v-1c0-1.7-2.7-3-6-3z',lb:'Supplier Portal', badge:'2'},
+      {v:'proc-dashboard', ic:'M14 2H4v12h10zM6 5h6v1H6zm0 3h6v1H6zm0 3h4v1H6z',lb:'Audit Log'},
+    ]
+  },
+  admin: {
+    label:'System Admin', name:'S. Moyo', brand:'Head Office', color:'#005f73', code:'AD',
+    nav:[
+      {v:'admin-dashboard',ic:'M0 0h7v7H0zm9 0h7v7H9zM0 9h7v7H0zm9 0h7v7H9z', lb:'Admin Dashboard'},
+      {v:'admin-dashboard',ic:'M8 1a3 3 0 100 6A3 3 0 008 1zm0 8c-3.3 0-6 1.3-6 3v1h12v-1c0-1.7-2.7-3-6-3z',lb:'Users & Invites'},
+      {v:'admin-dashboard',ic:'M14 2H4v12h10zM6 5h6v1H6zm0 3h6v1H6zm0 3h4v1H6z',lb:'System Audit'},
+    ]
+  },
+  executive: {
+    label:'Executive', name:'D. Chinhoro', brand:'Simbisa Group', color:'#161616', code:'EX',
+    nav:[
+      {v:'exec-dashboard', ic:'M0 0h7v7H0zm9 0h7v7H9zM0 9h7v7H0zm9 0h7v7H9z', lb:'Executive Dashboard'},
+      {v:'exec-dashboard', ic:'M1 1h14v3H1zm0 5h14v3H1zm0 5h14v3H1z',          lb:'InnBucks Sales', badge:'Live', live:true},
+      {v:'exec-dashboard', ic:'M0 14h16v2H0zm1 0V9h3v5zm5-6h3v6H6zm5-4h3v10h-3z',lb:'KPIs & Analytics'},
+    ]
+  }
+};
+
+let SESSION = null;
+
+// ── TOAST SYSTEM ──────────────────────────────────────────────────────────────
+function toast(type, title, sub) {
+  const icons = {ok:'✓', er:'✕', wa:'⚠', info:'ℹ'};
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<div class="toast-icon">${icons[type]||'ℹ'}</div><div class="toast-body"><div class="toast-title">${title}</div>${sub?`<div class="toast-sub">${sub}</div>`:''}</div><button class="toast-x" onclick="dismissToast(this)">×</button>`;
+  c.appendChild(t);
+  setTimeout(() => dismissToast(t.querySelector('.toast-x')), 5000);
+}
+function dismissToast(btn) {
+  const t = btn.closest ? btn.closest('.toast') : btn;
+  if (!t) return;
+  t.style.animation = 'toastOut .2s ease forwards';
+  setTimeout(() => t.remove(), 200);
+}
+
+// ── LOGIN ─────────────────────────────────────────────────────────────────────
+function pickRole(btn, role, name, brand, color, code) {
+  document.querySelectorAll('.rc').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+  document.getElementById('lgEmail').value = name.toLowerCase().replace(' ','.') + '@simbisa.co.zw';
+  SESSION = {role, name, brand, color, code};
+  document.getElementById('lgErr').style.display = 'none';
+}
+
+function doLogin() {
+  if (!SESSION) { document.getElementById('lgErr').style.display = 'block'; return; }
+  const lg = document.getElementById('LOGIN');
+  lg.style.opacity = '0';
+  setTimeout(() => {
+    lg.classList.add('out');
+    document.getElementById('APP').style.display = 'block';
+    buildApp();
+    toast('ok', 'Welcome back, ' + SESSION.name.split(' ')[0], SESSION.role.charAt(0).toUpperCase() + SESSION.role.slice(1) + ' · ' + SESSION.brand);
+  }, 320);
+}
+
+function doLogout() {
+  document.getElementById('APP').style.display = 'none';
+  const lg = document.getElementById('LOGIN');
+  lg.classList.remove('out'); lg.style.opacity = '0';
+  SESSION = null;
+  document.querySelectorAll('.rc').forEach(b => b.classList.remove('sel'));
+  document.getElementById('lgEmail').value = '';
+  document.getElementById('lgErr').style.display = 'none';
+  requestAnimationFrame(() => requestAnimationFrame(() => { lg.style.opacity = '1'; }));
+}
+
+function buildApp() {
+  const r = ROLES[SESSION.role];
+  const sq = document.getElementById('hSq');
+  sq.textContent = SESSION.code; sq.style.background = SESSION.color;
+  document.getElementById('hNm').textContent = 'Cash Verification System';
+  document.getElementById('hSub').textContent = SESSION.brand + ' — ' + r.label;
+  document.getElementById('hTag').style.background = SESSION.color;
+  document.getElementById('hAv').style.background = SESSION.color;
+  document.getElementById('hAv').textContent = SESSION.name.split(' ').map(n=>n[0]).join('').slice(0,2);
+
+  const nav = document.getElementById('sNav');
+  nav.innerHTML = '';
+  const sec = document.createElement('div'); sec.className='snl'; sec.textContent = r.label.toUpperCase(); nav.appendChild(sec);
+
+  r.nav.forEach((item, i) => {
+    const d = document.createElement('div');
+    d.className = 'sni' + (i===0?' on':'');
+    d.onclick = function(){ navClick(this, item.v); };
+    let badge = '';
+    if (item.badge) {
+      const bg = item.ba ? 'var(--er)' : item.live ? 'var(--ok-t)' : '#525252';
+      const ac = item.ba ? 'alert' : item.live ? 'live' : '';
+      badge = `<span class="snb ${ac}" style="background:${bg}">${item.badge}</span>`;
+    }
+    d.innerHTML = `<svg class="sni-ic" viewBox="0 0 16 16" fill="currentColor"><path d="${item.ic}"/></svg>${item.lb}${badge}`;
+    nav.appendChild(d);
+  });
+
+  document.querySelectorAll('.main').forEach(m => m.classList.remove('on'));
+  const fv = document.getElementById('v-' + r.nav[0].v);
+  if (fv) fv.classList.add('on');
+  document.getElementById('hTtl').textContent = r.nav[0].lb;
+
+  // animate budget bars
+  document.querySelectorAll('.bp-fill, .brf').forEach(b => {
+    const w = b.style.width; b.style.width='0'; setTimeout(()=>b.style.width=w, 400);
+  });
+}
+
+// ── NAV ───────────────────────────────────────────────────────────────────────
+function navClick(el, viewId) {
+  document.querySelectorAll('.sni').forEach(i=>i.classList.remove('on'));
+  el.classList.add('on');
+  showView(viewId);
+  document.getElementById('hTtl').textContent = el.textContent.trim().replace(/\d+$/,'').replace('Live','').trim();
+}
+function showView(viewId) {
+  document.querySelectorAll('.main').forEach(m=>m.classList.remove('on'));
+  const v = document.getElementById('v-'+viewId);
+  if (v) v.classList.add('on');
+}
+
+// ── MODALS ────────────────────────────────────────────────────────────────────
+function openM(id) { document.getElementById(id).classList.add('open'); }
+function closeM(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.ov').forEach(o => o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); }));
+
+// ── BATCH PAYMENTS ────────────────────────────────────────────────────────────
+function updateBatch() {
+  const checked = document.querySelectorAll('.batchCk:checked').length;
+  const bar = document.getElementById('batchBar');
+  const ct = document.getElementById('batchCt');
+  if (checked > 0) {
+    bar.classList.add('show');
+    ct.textContent = checked + ' request' + (checked>1?'s':'') + ' selected';
+  } else {
+    bar.classList.remove('show');
+  }
+}
+function clearBatch() {
+  document.querySelectorAll('.batchCk').forEach(c=>c.checked=false);
+  document.getElementById('batchBar').classList.remove('show');
+}
+function toggleAllBatch(cb) {
+  document.querySelectorAll('.batchCk').forEach(c=>c.checked=cb.checked);
+  updateBatch();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,210 @@
+import { useState } from 'react';
+import { useApp } from '../context/AppContext';
+import StatusTag from '../components/shared/StatusTag';
+import { PayModal, BatchPayModal, ExceptionApproveModal, StatementModal, RejectModal } from '../components/modals/AllModals';
+
+const APPROVALS = [
+  { id: 'PC-0041', mgr: 'K. Mutasa',   shop: 'Sh-14', purpose: 'Cleaning',    supplier: 'CleanPro',      wallet: 'IB-0773-8812', amt: '$180', rawAmt: 180, flag: 'exception', idColor: 'var(--er)' },
+  { id: 'PC-0039', mgr: 'P. Chiriseri',shop: 'Sh-07', purpose: 'Maintenance', supplier: 'Swift Maint.',  wallet: 'IB-0771-2244', amt: '$200', rawAmt: 200, flag: 'within',    idColor: 'var(--info)' },
+  { id: 'PC-0038', mgr: 'M. Dube',     shop: 'Sh-22', purpose: 'Gas refill',  supplier: 'ZimGas',        wallet: 'IB-0774-3344', amt: '$120', rawAmt: 120, flag: 'within',    idColor: 'var(--info)' },
+  { id: 'PC-0036', mgr: 'T. Chiriseri',shop: 'Sh-03', purpose: 'Stationery',  supplier: 'OfficeFirst',   wallet: 'IB-0775-1122', amt: '$55',  rawAmt: 55,  flag: 'within',    idColor: 'var(--info)' },
+  { id: 'PC-0034', mgr: 'B. Moyo',     shop: 'Sh-11', purpose: 'Cleaning',    supplier: 'CleanPro',      wallet: 'IB-0776-9900', amt: '$95',  rawAmt: 95,  flag: 'within',    idColor: 'var(--info)' },
+];
+
+const INNBUCKS = [
+  { inv: 'INV-2025-4412', time: '14:31:02', shop: 'Sh-22 Eastgate',   wallet: 'IB-0772-8190', ccy: 'USD', amt: '$142.00', ref: 'IB-TXN-93412', status: 'settled' },
+  { inv: 'INV-2025-4410', time: '14:25:17', shop: 'Sh-14 Borrowdale', wallet: 'IB-0773-9910', ccy: 'USD', amt: '$54.00',  ref: 'IB-TXN-93410', status: 'settled' },
+  { inv: 'INV-2025-4406', time: '14:10:44', shop: 'Sh-22 Eastgate',   wallet: 'IB-0772-4490', ccy: 'USD', amt: '$68.00',  ref: 'IB-TXN-93406', status: 'settled' },
+  { inv: 'INV-2025-4402', time: '13:58:22', shop: 'Sh-07 Avondale',   wallet: 'IB-0778-3312', ccy: 'USD', amt: '$36.00',  ref: 'Pending',       status: 'pending' },
+  { inv: 'INV-2025-4398', time: '13:42:10', shop: 'Sh-14 Borrowdale', wallet: 'IB-0773-2201', ccy: 'USD', amt: '$88.50',  ref: 'IB-TXN-93398', status: 'settled' },
+  { inv: 'INV-2025-4390', time: '13:15:05', shop: 'Sh-03 Avondale',   wallet: 'IB-0771-8830', ccy: 'USD', amt: '$210.00', ref: 'IB-TXN-93390', status: 'settled' },
+];
+
+const AUDIT_LOGS = [
+  { color: 'var(--er)',  time: '23 Mar 13:10', text: '<strong>THRESHOLD ALERT</strong> — Sh-14 at 90% of $800 limit · Exception required for PC-0041', user: 'System Auto · Chicken Inn' },
+  { color: 'var(--ok)',  time: '23 Mar 12:45', text: '<strong>PAYMENT APPROVED</strong> — PC-0032 · $200 · Swift Maintenance · IB-TXN-93380', user: 'T. Ndlovu (Brand Manager) · Chicken Inn Sh-07' },
+  { color: 'var(--ok)',  time: '23 Mar 11:20', text: '<strong>BATCH PAYMENT</strong> — 4 payments totalling $620 · InnBucks batch TXN-93375', user: 'T. Ndlovu (Brand Manager) · Chicken Inn' },
+  { color: 'var(--wa)',  time: '23 Mar 10:05', text: '<strong>EXCEPTION PENDING</strong> — PC-0041 · $180 · Sh-14 over $800 budget limit', user: 'K. Mutasa (Shop Manager) · Chicken Inn Sh-14' },
+  { color: 'var(--int)', time: '22 Mar 15:30', text: '<strong>REQUEST VALIDATED</strong> — PC-0039 · $200 · Forwarded by Brand Accountant', user: 'C. Mutandwa (Brand Accountant) · Pizza Inn' },
+];
+
+export default function BmDashboard() {
+  const { addToast } = useApp();
+  const [tab, setTab] = useState(0);
+  const [selected, setSelected] = useState({});
+  const [payTarget, setPayTarget] = useState(null);
+  const [showBatch, setShowBatch] = useState(false);
+  const [showExcApprove, setShowExcApprove] = useState(false);
+  const [showStatement, setShowStatement] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState(null);
+  const [excRejected, setExcRejected] = useState(false);
+
+  const selectedIds = Object.keys(selected).filter(id => selected[id]);
+  const selectedRows = APPROVALS.filter(a => selectedIds.includes(a.id));
+  const selectedCount = selectedIds.length;
+
+  const toggleAll = (c) => {
+    const next = {};
+    APPROVALS.forEach(a => { next[a.id] = c; });
+    setSelected(next);
+  };
+
+  const tabs = ['Approvals', 'InnBucks Sales', 'Audit Log'];
+
+  return (
+    <>
+      <div className="ph">
+        <div className="bc">CVS <span>/</span> Chicken Inn <span>/</span> Brand Manager <span>/</span> Approvals</div>
+        <div className="pt">Brand Manager Dashboard — Chicken Inn</div>
+        <div className="pd">Pending approvals, batch payments and InnBucks sales for Chicken Inn</div>
+        <div className="ptabs">
+          {tabs.map((t, i) => (
+            <button key={t} className={`ptab${tab === i ? ' on' : ''}`} onClick={() => setTab(i)}>{t}</button>
+          ))}
+        </div>
+      </div>
+      <div className="cnt">
+
+        {/* ── Tab 0: Approvals ─────────────────────────────────────────── */}
+        {tab === 0 && (<>
+          <div className="kg c4">
+            <div className="kc yw"><div className="kl">Pending Approvals</div><div className="kv">{APPROVALS.length}</div><div className="kd nt">Validated by Accountant</div><div className="ki">⏳</div></div>
+            <div className="kc bl"><div className="kl">Total to Disburse</div><div className="kv">${APPROVALS.reduce((s,a) => s+a.rawAmt, 0).toLocaleString()}</div><div className="kd nt">If all approved</div><div className="ki">💳</div></div>
+            <div className="kc gn"><div className="kl">Paid This Week</div><div className="kv">$4,320</div><div className="kd up">↑ 18 transactions</div><div className="ki">✓</div></div>
+            <div className="kc rd"><div className="kl">Exception Requests</div><div className="kv">{excRejected ? 0 : 1}</div><div className="kd dn">{excRejected ? 'Resolved' : 'Shops over threshold'}</div><div className="ki">🚨</div></div>
+          </div>
+
+          <div className={`batch-bar${selectedCount > 0 ? ' show' : ''}`}>
+            <div className="batch-ct">{selectedCount} request{selectedCount !== 1 ? 's' : ''} selected — ${selectedRows.reduce((s,r) => s+r.rawAmt, 0).toFixed(2)} total</div>
+            <button className="batch-act sec" onClick={() => setSelected({})}>Clear Selection</button>
+            <button className="batch-act pri" onClick={() => setShowBatch(true)}>Batch Pay via InnBucks</button>
+          </div>
+
+          {!excRejected && (
+            <div className="thresh">
+              <div className="thr-ic">🚨</div>
+              <div>
+                <div className="thr-t">Exception Approval Required — PC-0041 — Sh-14 over threshold</div>
+                <div className="thr-d">Sh-14 at 90% of $800 limit. PC-0041 ($180) would exceed by $100. Exception approved by Accountant.</div>
+                <div className="thr-acts">
+                  <button className="ab pri" style={{ height: 30, fontSize: 11 }} onClick={() => setShowExcApprove(true)}>
+                    Approve Exception &amp; Pay
+                  </button>
+                  <button className="ab sec" style={{ height: 30, fontSize: 11 }} onClick={() => { setExcRejected(true); addToast('er', 'Exception rejected', 'PC-0041 exception has been rejected. Shop manager notified.'); }}>
+                    Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="tbbar">
+            <div className="tbt">Pending Approvals — Chicken Inn</div>
+            <button className="ab sec" style={{ height: 34, fontSize: 12 }} onClick={() => selectedCount > 0 ? setShowBatch(true) : addToast('wa', 'No requests selected', 'Check at least one request to batch pay')}>
+              Batch Pay Selected
+            </button>
+          </div>
+          <table className="dt">
+            <thead>
+              <tr>
+                <th className="ck"><input type="checkbox" onChange={e => toggleAll(e.target.checked)} checked={selectedCount === APPROVALS.length} /></th>
+                <th>ID</th><th>Manager</th><th>Shop</th><th>Purpose</th><th>Supplier</th><th>InnBucks Wallet</th><th>Amount</th><th>Flag</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {APPROVALS.map(a => (
+                <tr key={a.id}>
+                  <td className="ck"><input type="checkbox" checked={!!selected[a.id]} onChange={e => setSelected(s => ({ ...s, [a.id]: e.target.checked }))} /></td>
+                  <td><code style={{ color: a.idColor, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>{a.id}</code></td>
+                  <td>{a.mgr}</td><td>{a.shop}</td><td>{a.purpose}</td><td>{a.supplier}</td>
+                  <td><code style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>{a.wallet}</code></td>
+                  <td><strong style={{ color: 'var(--int)' }}>{a.amt}</strong></td>
+                  <td><StatusTag type={a.flag} /></td>
+                  <td>
+                    <div className="ra">
+                      <button className="rb pay" onClick={() => setPayTarget(a)}>Pay InnBucks</button>
+                      <button className="rb rj" onClick={() => setRejectTarget(a)}>Reject</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>)}
+
+        {/* ── Tab 1: InnBucks Sales ─────────────────────────────────────── */}
+        {tab === 1 && (<>
+          <div className="kg c4">
+            <div className="kc gn"><div className="kl">Today's Sales</div><div className="kv">$598.50</div><div className="kd up">↑ 6 transactions settled</div><div className="ki">📈</div></div>
+            <div className="kc bl"><div className="kl">Settled</div><div className="kv">5</div><div className="kd up">Fully processed</div><div className="ki">✓</div></div>
+            <div className="kc yw"><div className="kl">Pending</div><div className="kv">1</div><div className="kd nt">Awaiting settlement</div><div className="ki">⏳</div></div>
+            <div className="kc pr"><div className="kl">Avg Basket</div><div className="kv">$99.75</div><div className="kd nt">Per transaction</div><div className="ki">💳</div></div>
+          </div>
+
+          <div className="tbbar">
+            <div className="tbt">InnBucks Sales — Chicken Inn (Real-Time)</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--ok)', animation: 'blink 1.5s infinite' }} />
+              <span style={{ fontSize: 11, color: 'var(--ok-t)', fontFamily: "'IBM Plex Mono',monospace" }}>LIVE</span>
+            </div>
+            <button className="ab sec" style={{ height: 34, fontSize: 12 }} onClick={() => setShowStatement(true)}>Statement PDF</button>
+          </div>
+          <table className="dt">
+            <thead><tr><th>Invoice No.</th><th>Time</th><th>Shop</th><th>Customer InnBucks No.</th><th>Currency</th><th>Amount</th><th>InnBucks Ref</th><th>Status</th></tr></thead>
+            <tbody>
+              {INNBUCKS.map(r => (
+                <tr key={r.inv}>
+                  <td><code style={{ color: 'var(--info)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>{r.inv}</code></td>
+                  <td style={{ fontSize: 12, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace" }}>{r.time}</td>
+                  <td>{r.shop}</td>
+                  <td><code style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>{r.wallet}</code></td>
+                  <td><code style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>{r.ccy}</code></td>
+                  <td><strong>{r.amt}</strong></td>
+                  <td><code style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: r.status === 'settled' ? 'var(--ok-t)' : 'var(--wa-t)' }}>{r.ref}</code></td>
+                  <td><StatusTag type={r.status} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>)}
+
+        {/* ── Tab 2: Audit Log ──────────────────────────────────────────── */}
+        {tab === 2 && (<>
+          <div className="kg c3">
+            <div className="kc gn"><div className="kl">Payments Today</div><div className="kv">$4,320</div><div className="kd up">↑ 18 transactions</div><div className="ki">✓</div></div>
+            <div className="kc bl"><div className="kl">Exceptions Logged</div><div className="kv">1</div><div className="kd nt">This month</div><div className="ki">📋</div></div>
+            <div className="kc yw"><div className="kl">Pending Actions</div><div className="kv">{APPROVALS.length}</div><div className="kd nt">Awaiting payment</div><div className="ki">⏳</div></div>
+          </div>
+          <div className="tbbar"><div className="tbt">Audit Log — Chicken Inn (Brand Manager View)</div></div>
+          <div style={{ background: 'var(--l1)', border: '1px solid var(--bs)', padding: '8px 14px' }}>
+            {AUDIT_LOGS.map((e, i) => (
+              <div className="log-e" key={i}>
+                <div className="log-dot" style={{ background: e.color }} />
+                <div className="log-time">{e.time}</div>
+                <div style={{ flex: 1 }}>
+                  <div className="log-txt" dangerouslySetInnerHTML={{ __html: e.text }} />
+                  <div className="log-user">{e.user}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>)}
+      </div>
+
+      <PayModal
+        open={!!payTarget}
+        onClose={() => setPayTarget(null)}
+        request={payTarget ? { mgr: payTarget.mgr, id: payTarget.id, wallet: payTarget.wallet, amt: payTarget.amt, supplier: payTarget.supplier, shop: payTarget.shop } : null}
+      />
+      <BatchPayModal open={showBatch} onClose={() => setShowBatch(false)} rows={selectedRows.length > 0 ? selectedRows : undefined} />
+      <ExceptionApproveModal open={showExcApprove} onClose={() => setShowExcApprove(false)} />
+      <StatementModal open={showStatement} onClose={() => setShowStatement(false)} />
+      <RejectModal
+        open={!!rejectTarget}
+        onClose={() => setRejectTarget(null)}
+        requestId={rejectTarget?.id}
+        onConfirm={() => addToast('er', `${rejectTarget?.id} rejected`, 'Shop manager will be notified by email')}
+      />
+    </>
+  );
+}
