@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import StatusTag from '../components/shared/StatusTag';
 import BrandChip from '../components/shared/BrandChip';
 import AuditLog from '../components/shared/AuditLog';
+import LineChart from '../components/shared/LineChart';
 import { ValidateModal, BudgetModal, RejectModal, RequestDetailModal } from '../components/modals/AllModals';
 
 const SHOPS = [
@@ -11,6 +12,14 @@ const SHOPS = [
   { id: 'Sh-08', loc: 'Sam Levy',  budget: 900,  spent: 860,  pct: 96, status: 'alert' },
   { id: 'Sh-22', loc: 'Borrowdale',budget: 1100, spent: 620,  pct: 56, status: 'ok' },
   { id: 'Sh-11', loc: 'Highfield', budget: 800,  spent: 780,  pct: 97, status: 'alert' },
+];
+
+// Budget burn trend across 4 weeks — per shop (multi-line)
+const BUDGET_TREND = [
+  { label: 'Wk 1', lines: [{ name: 'Sh-03', value: 180, color: '#0f62fe' }, { name: 'Sh-08', value: 210, color: '#da1e28' }, { name: 'Sh-11', value: 160, color: '#6929c4' }, { name: 'Sh-19', value: 90,  color: '#24a148' }, { name: 'Sh-22', value: 140, color: '#f1c21b' }] },
+  { label: 'Wk 2', lines: [{ name: 'Sh-03', value: 410, color: '#0f62fe' }, { name: 'Sh-08', value: 480, color: '#da1e28' }, { name: 'Sh-11', value: 390, color: '#6929c4' }, { name: 'Sh-19', value: 210, color: '#24a148' }, { name: 'Sh-22', value: 280, color: '#f1c21b' }] },
+  { label: 'Wk 3', lines: [{ name: 'Sh-03', value: 650, color: '#0f62fe' }, { name: 'Sh-08', value: 680, color: '#da1e28' }, { name: 'Sh-11', value: 590, color: '#6929c4' }, { name: 'Sh-19', value: 340, color: '#24a148' }, { name: 'Sh-22', value: 430, color: '#f1c21b' }] },
+  { label: 'Wk 4', lines: [{ name: 'Sh-03', value: 890, color: '#0f62fe' }, { name: 'Sh-08', value: 860, color: '#da1e28' }, { name: 'Sh-11', value: 780, color: '#6929c4' }, { name: 'Sh-19', value: 450, color: '#24a148' }, { name: 'Sh-22', value: 620, color: '#f1c21b' }] },
 ];
 
 const QUEUE_DATA = [
@@ -83,6 +92,25 @@ export default function AccDashboard() {
             <div className="kc rd"><div className="kl">Total Disbursed</div><div className="kv">$8,820</div><div className="kd dn">71% of total budget used</div><div className="ki">📊</div></div>
             <div className="kc gn"><div className="kl">Remaining Budget</div><div className="kv">$3,580</div><div className="kd up">29% available</div><div className="ki">✓</div></div>
             <div className="kc yw"><div className="kl">Pending Requests</div><div className="kv">{QUEUE_DATA.length}</div><div className="kd nt">Awaiting your review</div><div className="ki">⏳</div></div>
+          </div>
+
+          {/* Budget burn trend chart */}
+          <div style={{ background: 'var(--l1)', border: '1px solid var(--bs)', padding: '14px 18px', marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>Monthly Budget Burn — Pizza Inn Shops</div>
+                <div style={{ fontSize: 11, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace", marginTop: 2 }}>Cumulative spend per week · March 2025</div>
+              </div>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                {[['Sh-03','#0f62fe'],['Sh-08','#da1e28'],['Sh-11','#6929c4'],['Sh-19','#24a148'],['Sh-22','#f1c21b']].map(([name, color]) => (
+                  <span key={name} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: "'IBM Plex Mono',monospace", color: 'var(--ts)' }}>
+                    <span style={{ width: 12, height: 3, background: color, display: 'inline-block', borderRadius: 2 }} />
+                    {name}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <LineChart data={BUDGET_TREND} color="#0f62fe" height={140} multiline={true} />
           </div>
 
           <div className="tbbar">

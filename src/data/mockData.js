@@ -5,6 +5,7 @@ export const ROLES = {
       { v: 'mgr-dashboard',   lb: 'Dashboard',    tab: 0 },
       { v: 'mgr-new-request', lb: 'New Request',  tab: 0 },
       { v: 'mgr-dashboard',   lb: 'My Requests',  tab: 0, badge: '3' },
+      { v: 'reports',         lb: 'Reports' },
     ]
   },
   accountant: {
@@ -22,6 +23,7 @@ export const ROLES = {
       { v: 'bm-dashboard', lb: 'Dashboard',     tab: 0, badge: '5', alert: true },
       { v: 'bm-dashboard', lb: 'InnBucks Sales',tab: 1, badge: 'Live', live: true },
       { v: 'bm-dashboard', lb: 'Audit Log',     tab: 2 },
+      { v: 'reports',      lb: 'Reports' },
     ]
   },
   procurement: {
@@ -31,6 +33,7 @@ export const ROLES = {
       { v: 'proc-dashboard', lb: 'Supplier Trends',  tab: 1 },
       { v: 'proc-dashboard', lb: 'Product Trends',   tab: 2 },
       { v: 'proc-dashboard', lb: 'Supplier Portal',  tab: 3, badge: '2' },
+      { v: 'reports',        lb: 'Reports' },
     ]
   },
   admin: {

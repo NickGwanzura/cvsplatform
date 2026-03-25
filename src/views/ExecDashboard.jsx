@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import BrandChip from '../components/shared/BrandChip';
 import StatusTag from '../components/shared/StatusTag';
+import LineChart from '../components/shared/LineChart';
 
 const BRANDS_DATA = [
   { brand: 'Chicken Inn',  budget: 8000,  disbursed: 4880, shops: 14, alerts: 1, alertType: 'monitor' },
@@ -30,6 +31,26 @@ const SUPPLIER_TRENDS = [
   { name: 'ZimGas Ltd',        mtd: 1870, ytd: 11220, brands: 'CI, CR, ND', trend: -3 },
   { name: 'OvenPro',           mtd: 1200, ytd: 7200,  brands: 'PI',          trend: 22 },
   { name: 'AquaFix',           mtd: 890,  ytd: 5340,  brands: 'CI',          trend: 0 },
+];
+
+const GROUP_SPEND_TREND = [
+  { label: 'Mon 17', value: 2840 },
+  { label: 'Tue 18', value: 3120 },
+  { label: 'Wed 19', value: 2690 },
+  { label: 'Thu 20', value: 3840 },
+  { label: 'Fri 21', value: 4210 },
+  { label: 'Sat 22', value: 3580 },
+  { label: 'Sun 23', value: 1220 },
+];
+
+const INNBUCKS_TREND = [
+  { label: 'Mon 17', value: 3210 },
+  { label: 'Tue 18', value: 3890 },
+  { label: 'Wed 19', value: 2940 },
+  { label: 'Thu 20', value: 4120 },
+  { label: 'Fri 21', value: 5340 },
+  { label: 'Sat 22', value: 6180 },
+  { label: 'Sun 23', value: 4500 },
 ];
 
 const pctOf = (a, b) => Math.round((a / b) * 100);
@@ -69,6 +90,20 @@ export default function ExecDashboard() {
             <div className="kc gn"><div className="kl">InnBucks Sales — All Brands</div><div className="kv">${totalSales.toLocaleString()}</div><div className="kd up">↑ Today's total</div><div className="ki">📈</div></div>
             <div className="kc yw"><div className="kl">Total Budget (MTD)</div><div className="kv">${totalBudget.toLocaleString()}</div><div className="kd nt">{pctOf(totalDisbursed, totalBudget)}% utilised</div><div className="ki">📊</div></div>
             <div className="kc rd"><div className="kl">Threshold Alerts</div><div className="kv">{BRANDS_DATA.reduce((s,b) => s+b.alerts,0)}</div><div className="kd dn">Shops over 80% limit</div><div className="ki">🚨</div></div>
+          </div>
+
+          {/* Group trend charts */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div style={{ background: 'var(--l1)', border: '1px solid var(--bs)', padding: '14px 18px' }}>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Group Petty Cash Spend — 7-Day Trend</div>
+              <div style={{ fontSize: 11, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace", marginBottom: 8 }}>Daily disbursements · All brands · Mon–Sun 23 Mar</div>
+              <LineChart data={GROUP_SPEND_TREND} color="#0f62fe" height={120} />
+            </div>
+            <div style={{ background: 'var(--l1)', border: '1px solid var(--bs)', padding: '14px 18px' }}>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>InnBucks Sales — 7-Day Trend</div>
+              <div style={{ fontSize: 11, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace", marginBottom: 8 }}>Daily group sales · All brands · Mon–Sun 23 Mar</div>
+              <LineChart data={INNBUCKS_TREND} color="#24a148" height={120} />
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
