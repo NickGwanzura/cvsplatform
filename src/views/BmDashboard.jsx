@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import StatusTag from '../components/shared/StatusTag';
 import { PayModal, BatchPayModal, ExceptionApproveModal, StatementModal, RejectModal } from '../components/modals/AllModals';
@@ -29,8 +29,9 @@ const AUDIT_LOGS = [
 ];
 
 export default function BmDashboard() {
-  const { addToast } = useApp();
-  const [tab, setTab] = useState(0);
+  const { addToast, activeTab } = useApp();
+  const [tab, setTab] = useState(activeTab ?? 0);
+  useEffect(() => { setTab(activeTab ?? 0); }, [activeTab]);
   const [selected, setSelected] = useState({});
   const [payTarget, setPayTarget] = useState(null);
   const [showBatch, setShowBatch] = useState(false);

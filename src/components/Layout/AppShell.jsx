@@ -9,6 +9,7 @@ import BmDashboard from '../../views/BmDashboard';
 import ProcDashboard from '../../views/ProcDashboard';
 import AdminDashboard from '../../views/AdminDashboard';
 import ExecDashboard from '../../views/ExecDashboard';
+import ReportsDashboard from '../../views/ReportsDashboard';
 
 const VIEWS = {
   'mgr-dashboard':   <MgrDashboard />,
@@ -18,6 +19,7 @@ const VIEWS = {
   'proc-dashboard':  <ProcDashboard />,
   'admin-dashboard': <AdminDashboard />,
   'exec-dashboard':  <ExecDashboard />,
+  'reports':         <ReportsDashboard />,
 };
 
 export default function AppShell() {

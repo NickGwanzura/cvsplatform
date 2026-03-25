@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useApp } from '../context/AppContext';
 import BrandChip from '../components/shared/BrandChip';
 import StatusTag from '../components/shared/StatusTag';
 
@@ -42,7 +43,9 @@ const totalSales = INNBUCKS_DATA.filter(b => !b.notLive).reduce((s, b) => s + b.
 const totalTxns = INNBUCKS_DATA.filter(b => !b.notLive).reduce((s, b) => s + b.txns, 0);
 
 export default function ExecDashboard() {
-  const [tab, setTab] = useState(0);
+  const { activeTab } = useApp();
+  const [tab, setTab] = useState(activeTab ?? 0);
+  useEffect(() => { setTab(activeTab ?? 0); }, [activeTab]);
   const tabs = ['Group Overview', 'Brand Breakdown', 'InnBucks Sales', 'Supplier Trends'];
 
   return (

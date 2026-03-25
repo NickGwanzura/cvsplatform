@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import BrandChip from '../components/shared/BrandChip';
 import StatusTag from '../components/shared/StatusTag';
@@ -34,8 +34,9 @@ const trendColor = (t) => t > 0 ? 'var(--ok)' : t < 0 ? 'var(--er)' : 'var(--ts)
 const trendLabel = (t) => t === null ? '—' : t === 0 ? '0%' : `${t > 0 ? '↑' : '↓'} ${Math.abs(t)}%`;
 
 export default function ProcDashboard() {
-  const { addToast } = useApp();
-  const [tab, setTab] = useState(0);
+  const { addToast, activeTab } = useApp();
+  const [tab, setTab] = useState(activeTab ?? 0);
+  useEffect(() => { setTab(activeTab ?? 0); }, [activeTab]);
   const [brandFilter, setBrandFilter] = useState('All');
   const [catFilter, setCatFilter] = useState('All');
   const [search, setSearch] = useState('');

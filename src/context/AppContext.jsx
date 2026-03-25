@@ -6,6 +6,7 @@ export function AppProvider({ children }) {
   const [session, setSession] = useState(null);
   const [activeView, setActiveView] = useState('');
   const [activeNavIdx, setActiveNavIdx] = useState(0);
+  const [activeTab, setActiveTab] = useState(0);
   const [headerTitle, setHeaderTitle] = useState('Dashboard');
   const [toasts, setToasts] = useState([]);
   // modal open state
@@ -17,6 +18,7 @@ export function AppProvider({ children }) {
     setSession({ roleKey, ...roleData });
     setActiveView(roleData.nav[0].v);
     setActiveNavIdx(0);
+    setActiveTab(roleData.nav[0].tab ?? 0);
     setHeaderTitle(roleData.nav[0].lb);
     addToast('ok', `Welcome back, ${roleData.name.split(' ')[0]}`, `${roleData.label} · ${roleData.brand}`);
   }, []);
@@ -25,12 +27,14 @@ export function AppProvider({ children }) {
     setSession(null);
     setActiveView('');
     setActiveNavIdx(0);
+    setActiveTab(0);
     setBatchSelected([]);
   }, []);
 
   const navigate = useCallback((navItem, idx) => {
     setActiveView(navItem.v);
     setActiveNavIdx(idx);
+    setActiveTab(navItem.tab ?? 0);
     setHeaderTitle(navItem.lb);
   }, []);
 
@@ -50,7 +54,7 @@ export function AppProvider({ children }) {
   return (
     <AppContext.Provider value={{
       session, login, logout,
-      activeView, activeNavIdx, navigate, headerTitle,
+      activeView, activeNavIdx, activeTab, navigate, headerTitle,
       toasts, addToast, dismissToast,
       modals, openModal, closeModal,
       batchSelected, setBatchSelected,

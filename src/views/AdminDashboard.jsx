@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import StatusTag from '../components/shared/StatusTag';
 import BrandChip from '../components/shared/BrandChip';
@@ -32,8 +32,9 @@ const SYSTEM_LOGS = [
 ];
 
 export default function AdminDashboard() {
-  const { addToast } = useApp();
-  const [tab, setTab] = useState(0);
+  const { addToast, activeTab } = useApp();
+  const [tab, setTab] = useState(activeTab ?? 0);
+  useEffect(() => { setTab(activeTab ?? 0); }, [activeTab]);
   const [showInvite, setShowInvite] = useState(false);
   const [editUser, setEditUser] = useState(null);
   const [revokeUser, setRevokeUser] = useState(null);

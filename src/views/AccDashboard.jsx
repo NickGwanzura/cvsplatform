@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import StatusTag from '../components/shared/StatusTag';
 import BrandChip from '../components/shared/BrandChip';
@@ -33,8 +33,9 @@ const LOGS = [
 const pctColor = (p) => p >= 90 ? 'var(--er)' : p >= 70 ? 'var(--wa-t)' : 'var(--ok-t)';
 
 export default function AccDashboard() {
-  const { addToast } = useApp();
-  const [tab, setTab] = useState(0);
+  const { addToast, activeTab } = useApp();
+  const [tab, setTab] = useState(activeTab ?? 0);
+  useEffect(() => { setTab(activeTab ?? 0); }, [activeTab]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [checkedAll, setCheckedAll] = useState(false);
