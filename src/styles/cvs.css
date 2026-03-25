@@ -29,6 +29,16 @@ body { background: var(--bg); overflow: hidden; height: 100vh; }
   background: var(--bg);
 }
 
+/* ── Side nav base (desktop) ─────────────────────────────────────────────── */
+.cvs-sidenav {
+  position: fixed; top: 48px; left: 0; bottom: 0; width: 256px;
+  background: var(--l1); border-right: 1px solid var(--bs);
+  z-index: 90; overflow-y: auto; display: flex; flex-direction: column;
+  transition: transform .25s ease;
+}
+.cvs-nav-backdrop { display: none; }
+.cvs-hamburger { display: none; }
+
 /* ── Page header (breadcrumb + title) ────────────────────────────────────── */
 .ph { padding: 22px 28px 0; border-bottom: 1px solid var(--bs); background: var(--l1); }
 .bc { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--ts); margin-bottom: 7px; font-family: 'IBM Plex Mono', monospace; }
@@ -267,3 +277,141 @@ input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--int); curs
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: var(--l1); }
 ::-webkit-scrollbar-thumb { background: var(--bs); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE — tablet & mobile
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Tablet (≤ 900px) ────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .kg.c4 { grid-template-columns: repeat(2, 1fr); }
+  .kg.c5 { grid-template-columns: repeat(2, 1fr); }
+  .cvs-header-brand { min-width: 0; }
+  .cvs-header-divider { display: none; }
+  .cvs-header-title { display: none; }
+}
+
+/* ── Mobile (≤ 768px) ────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* Body — allow scroll */
+  body { overflow: auto; height: auto; min-height: 100vh; }
+
+  /* Content area — no left margin, allow scroll */
+  .cvs-content-area {
+    margin-left: 0;
+    height: auto;
+    min-height: calc(100vh - 48px);
+    overflow-y: visible;
+  }
+
+  /* ── Side nav — off-canvas drawer ─────────────────────────────────────── */
+  .cvs-sidenav {
+    transform: translateX(-100%);
+    width: 280px;
+    z-index: 200;
+    box-shadow: 4px 0 24px rgba(0,0,0,.18);
+  }
+  .cvs-sidenav.open { transform: translateX(0); }
+
+  /* Backdrop */
+  .cvs-nav-backdrop {
+    display: block;
+    position: fixed; inset: 0;
+    background: rgba(22,22,22,.55);
+    z-index: 199;
+  }
+
+  /* Hamburger button */
+  .cvs-hamburger {
+    display: flex; align-items: center; justify-content: center;
+    width: 40px; height: 48px;
+    background: none; border: none; cursor: pointer;
+    color: var(--tp); flex-shrink: 0;
+  }
+
+  /* Header — condense */
+  .cvs-header-brand { min-width: 0; flex: 1; overflow: hidden; }
+  .cvs-header-nm { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cvs-header-sub { display: none; }
+  .cvs-header-divider { display: none; }
+  .cvs-header-title { display: none; }
+  .cvs-header-tag { display: none; }
+
+  /* ── KPI grids ─────────────────────────────────────────────────────────── */
+  .kg.c4, .kg.c3, .kg.c5 { grid-template-columns: 1fr 1fr; }
+  .kv { font-size: 20px; }
+
+  /* ── Page header ───────────────────────────────────────────────────────── */
+  .ph { padding: 14px 14px 0; }
+  .pt { font-size: 17px; }
+  .pd { font-size: 11px; margin-bottom: 10px; }
+  .ptabs { overflow-x: auto; white-space: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .ptabs::-webkit-scrollbar { display: none; }
+  .ptab { padding: 8px 12px; font-size: 12px; }
+  .cnt { padding: 14px; }
+
+  /* ── Tables — scrollable wrapper ──────────────────────────────────────── */
+  .dt { display: block; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+  .tbbar { flex-wrap: wrap; gap: 6px; padding: 8px 10px; }
+  .tbt { width: 100%; font-size: 12px; }
+  .srch { width: 100%; }
+
+  /* ── Forms ─────────────────────────────────────────────────────────────── */
+  .fg { grid-template-columns: 1fr; }
+  .fi.full { grid-column: 1; }
+
+  /* ── Action buttons ─────────────────────────────────────────────────────── */
+  .thr-acts { flex-wrap: wrap; }
+  .batch-bar { flex-wrap: wrap; gap: 6px; }
+  .batch-ct { width: 100%; }
+
+  /* ── Audit log ─────────────────────────────────────────────────────────── */
+  .log-time { min-width: 80px; font-size: 9px; }
+
+  /* ── Toast ─────────────────────────────────────────────────────────────── */
+  #cvs-toast-container {
+    left: 12px; right: 12px; bottom: 12px;
+  }
+  .cvs-toast { min-width: 0; width: 100%; max-width: 100%; font-size: 12px; }
+
+  /* ── Modal — full screen ───────────────────────────────────────────────── */
+  .cds--modal-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    margin: 0 !important;
+  }
+
+  /* ── Login — stack vertically ──────────────────────────────────────────── */
+  .lg-wrap { flex-direction: column; overflow-y: auto; }
+  .lg-l {
+    width: 100%; flex-shrink: 0;
+    padding: 28px 24px;
+    border-right: none; border-bottom: 1px solid #262626;
+  }
+  .lg-h { font-size: 26px; }
+  .lg-r { padding: 24px 16px; align-items: flex-start; }
+  .lg-card { padding: 24px 20px; max-width: 100%; }
+  .role-grid { grid-template-columns: 1fr 1fr; gap: 5px; }
+  .lc-h { font-size: 20px; }
+
+  /* ── InnBucks panel ────────────────────────────────────────────────────── */
+  .ps { grid-template-columns: 1fr 1fr; }
+
+  /* ── Steps ─────────────────────────────────────────────────────────────── */
+  .sl { font-size: 9px; text-align: center; }
+}
+
+/* ── Very small (≤ 420px) ───────────────────────────────────────────────── */
+@media (max-width: 420px) {
+  .kg.c4, .kg.c3, .kg.c5 { grid-template-columns: 1fr; }
+  .role-grid { grid-template-columns: 1fr; }
+  .ra { flex-direction: column; gap: 4px; }
+  .ra .rb { text-align: center; }
+  .kv { font-size: 22px; }
+  .ph { padding: 12px 10px 0; }
+  .cnt { padding: 10px; }
+  .ps { grid-template-columns: 1fr; }
+}

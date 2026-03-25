@@ -13,6 +13,7 @@ export function AppProvider({ children }) {
   const [modals, setModals] = useState({});
   // batch selection for BM dashboard
   const [batchSelected, setBatchSelected] = useState([]);
+  const [navOpen, setNavOpen] = useState(false);
 
   const login = useCallback((roleKey, roleData) => {
     setSession({ roleKey, ...roleData });
@@ -36,6 +37,7 @@ export function AppProvider({ children }) {
     setActiveNavIdx(idx);
     setActiveTab(navItem.tab ?? 0);
     setHeaderTitle(navItem.lb);
+    setNavOpen(false);
   }, []);
 
   const addToast = useCallback((type, title, sub) => {
@@ -58,6 +60,7 @@ export function AppProvider({ children }) {
       toasts, addToast, dismissToast,
       modals, openModal, closeModal,
       batchSelected, setBatchSelected,
+      navOpen, setNavOpen,
     }}>
       {children}
     </AppContext.Provider>

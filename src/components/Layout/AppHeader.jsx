@@ -2,7 +2,7 @@ import { useApp } from '../../context/AppContext';
 import { ROLES } from '../../data/mockData';
 
 export default function AppHeader() {
-  const { session, logout, headerTitle, openModal } = useApp();
+  const { session, logout, headerTitle, openModal, navOpen, setNavOpen } = useApp();
   if (!session) return null;
   const r = ROLES[session.roleKey];
   const initials = session.name.split(' ').map(n => n[0]).join('').slice(0, 2);
@@ -13,6 +13,14 @@ export default function AppHeader() {
       background: 'var(--l1)', borderBottom: '1px solid var(--bs)',
       display: 'flex', alignItems: 'center', zIndex: 100, padding: '0 16px', gap: 12
     }}>
+      {/* Hamburger — mobile only */}
+      <button className="cvs-hamburger" onClick={() => setNavOpen(o => !o)} title="Menu" aria-label="Toggle navigation">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+          {navOpen
+            ? <path d="M14 4l-10 10M4 4l10 10" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+            : <><rect y="3" width="18" height="1.5"/><rect y="8.25" width="18" height="1.5"/><rect y="13.5" width="18" height="1.5"/></>}
+        </svg>
+      </button>
       <div className="cvs-header-sq" style={{ background: session.color }}>{session.code}</div>
       <div className="cvs-header-brand">
         <div className="cvs-header-nm">Cash Verification System</div>
