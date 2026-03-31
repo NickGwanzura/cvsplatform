@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import StatusTag from '../components/shared/StatusTag';
 import BrandChip from '../components/shared/BrandChip';
+import Breadcrumbs from '../components/shared/Breadcrumbs';
 import { InviteUserModal, EditUserModal, RevokeUserModal } from '../components/modals/AllModals';
 
 const USERS_DATA = [
@@ -59,7 +60,11 @@ export default function AdminDashboard() {
   return (
     <>
       <div className="ph">
-        <div className="bc">CVS <span>/</span> Admin <span>/</span> User Management</div>
+        <Breadcrumbs items={[
+          { label: 'CVS' },
+          { label: 'Admin' },
+          { label: 'User Management' },
+        ]} />
         <div className="pt">System Administration</div>
         <div className="pd">Invite users, manage roles and monitor system access</div>
         <div className="ptabs">

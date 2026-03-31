@@ -22,7 +22,6 @@ export const ROLES = {
     nav: [
       { v: 'bm-dashboard', lb: 'Dashboard',     tab: 0, badge: '5', alert: true },
       { v: 'bm-dashboard', lb: 'InnBucks Sales',tab: 1, badge: 'Live', live: true },
-      { v: 'bm-dashboard', lb: 'Audit Log',     tab: 2 },
       { v: 'reports',      lb: 'Reports' },
     ]
   },

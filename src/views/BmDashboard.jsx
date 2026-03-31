@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import StatusTag from '../components/shared/StatusTag';
 import LineChart from '../components/shared/LineChart';
+import Breadcrumbs from '../components/shared/Breadcrumbs';
 import { PayModal, BatchPayModal, ExceptionApproveModal, StatementModal, RejectModal } from '../components/modals/AllModals';
 
 const APPROVALS = [
@@ -40,14 +41,6 @@ const DAILY_SALES = [
   { label: 'Sun 23', value: 598 },
 ];
 
-const AUDIT_LOGS = [
-  { color: 'var(--er)',  time: '23 Mar 13:10', text: '<strong>THRESHOLD ALERT</strong> — Sh-14 at 90% of $800 limit · Exception required for PC-0041', user: 'System Auto · Chicken Inn' },
-  { color: 'var(--ok)',  time: '23 Mar 12:45', text: '<strong>PAYMENT APPROVED</strong> — PC-0032 · $200 · Swift Maintenance · IB-TXN-93380', user: 'T. Ndlovu (Brand Manager) · Chicken Inn Sh-07' },
-  { color: 'var(--ok)',  time: '23 Mar 11:20', text: '<strong>BATCH PAYMENT</strong> — 4 payments totalling $620 · InnBucks batch TXN-93375', user: 'T. Ndlovu (Brand Manager) · Chicken Inn' },
-  { color: 'var(--wa)',  time: '23 Mar 10:05', text: '<strong>EXCEPTION PENDING</strong> — PC-0041 · $180 · Sh-14 over $800 budget limit', user: 'K. Mutasa (Shop Manager) · Chicken Inn Sh-14' },
-  { color: 'var(--int)', time: '22 Mar 15:30', text: '<strong>REQUEST VALIDATED</strong> — PC-0039 · $200 · Forwarded by Brand Accountant', user: 'C. Mutandwa (Brand Accountant) · Pizza Inn' },
-];
-
 const reconColor = (s) => s === 'matched' ? 'var(--ok-t)' : s === 'discrepancy' ? 'var(--er)' : 'var(--wa-t)';
 const reconBg    = (s) => s === 'matched' ? 'var(--ok-bg)' : s === 'discrepancy' ? '#fff1f1' : 'var(--wa-bg)';
 const reconLabel = (s) => s === 'matched' ? 'MATCHED' : s === 'discrepancy' ? 'DISCREPANCY' : 'PENDING';
@@ -78,12 +71,17 @@ export default function BmDashboard() {
     setSelected(next);
   };
 
-  const tabs = ['Approvals', 'InnBucks Sales', 'Audit Log'];
+  const tabs = ['Approvals', 'InnBucks Sales'];
 
   return (
     <>
       <div className="ph">
-        <div className="bc">CVS <span>/</span> Chicken Inn <span>/</span> Brand Manager <span>/</span> Approvals</div>
+        <Breadcrumbs items={[
+          { label: 'CVS' },
+          { label: 'Chicken Inn' },
+          { label: 'Brand Manager' },
+          { label: 'Approvals' },
+        ]} />
         <div className="pt">Brand Manager Dashboard — Chicken Inn</div>
         <div className="pd">Pending approvals, batch payments and InnBucks sales for Chicken Inn</div>
         <div className="ptabs">
@@ -261,27 +259,6 @@ export default function BmDashboard() {
           </div>
         </>)}
 
-        {/* ── Tab 2: Audit Log ──────────────────────────────────────────── */}
-        {tab === 2 && (<>
-          <div className="kg c3">
-            <div className="kc gn"><div className="kl">Payments Today</div><div className="kv">$4,320</div><div className="kd up">↑ 18 transactions</div><div className="ki">✓</div></div>
-            <div className="kc bl"><div className="kl">Exceptions Logged</div><div className="kv">1</div><div className="kd nt">This month</div><div className="ki">📋</div></div>
-            <div className="kc yw"><div className="kl">Pending Actions</div><div className="kv">{APPROVALS.length}</div><div className="kd nt">Awaiting payment</div><div className="ki">⏳</div></div>
-          </div>
-          <div className="tbbar"><div className="tbt">Audit Log — Chicken Inn (Brand Manager View)</div></div>
-          <div style={{ background: 'var(--l1)', border: '1px solid var(--bs)', padding: '8px 14px' }}>
-            {AUDIT_LOGS.map((e, i) => (
-              <div className="log-e" key={i}>
-                <div className="log-dot" style={{ background: e.color }} />
-                <div className="log-time">{e.time}</div>
-                <div style={{ flex: 1 }}>
-                  <div className="log-txt" dangerouslySetInnerHTML={{ __html: e.text }} />
-                  <div className="log-user">{e.user}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>)}
       </div>
 
       <PayModal

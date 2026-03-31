@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import LineChart from '../components/shared/LineChart';
 
-const MONTHS = ['March 2025', 'February 2025', 'January 2025', 'December 2024', 'November 2024'];
-const BRANDS_LIST = ['All Brands', 'Chicken Inn', 'Pizza Inn', 'Creamy Inn', "Nando's", 'Steers', "Roco Mamma's"];
+const BRANDS_LIST = ['All Brands', 'Chicken Inn', 'Pizza Inn', 'Creamy Inn', "Nando's", 'Steers', "Roco Mamma's", 'Ocean Basket', 'Hefelies', "Pastino's"];
+const SHOPS_LIST = ['All Shops', 'Sh-03 Avondale', 'Sh-07 Avondale', 'Sh-08 Sam Levy', 'Sh-11 Highfield', 'Sh-14 Borrowdale', 'Sh-19 Eastgate', 'Sh-22 Eastgate', 'Sh-05 Borrowdale'];
+const LOCATIONS = ['All Locations', 'Avondale', 'Borrowdale', 'Eastgate', 'Sam Levy', 'Highfield'];
+const TIMEFRAMES = ['This Month', 'Last Month', 'This Quarter', 'Last Quarter', 'This Year', 'Custom'];
 
 const REPORTS = [
   {
@@ -20,7 +21,6 @@ const REPORTS = [
       { label: 'Utilisation', val: '65%' },
       { label: 'Exceptions', val: '4' },
     ],
-    trend: [{ label: 'Wk1', value: 3200 }, { label: 'Wk2', value: 6800 }, { label: 'Wk3', value: 12400 }, { label: 'Wk4', value: 19396 }],
     pages: 12, size: '1.4 MB',
   },
   {
@@ -37,7 +37,6 @@ const REPORTS = [
       { label: 'Total Budget', val: '$31,000' },
       { label: 'Avg Utilisation', val: '62%' },
     ],
-    trend: [{ label: 'Jan', value: 24200 }, { label: 'Feb', value: 27800 }, { label: 'Mar', value: 19396 }],
     pages: 18, size: '2.1 MB',
   },
   {
@@ -54,7 +53,6 @@ const REPORTS = [
       { label: 'Avg Basket', val: '$85.14' },
       { label: 'MoM Change', val: '↑ 4.2%' },
     ],
-    trend: [{ label: 'Mon', value: 3210 }, { label: 'Tue', value: 3890 }, { label: 'Wed', value: 2940 }, { label: 'Thu', value: 4120 }, { label: 'Fri', value: 5340 }, { label: 'Sat', value: 6180 }],
     pages: 8, size: '0.9 MB',
   },
   {
@@ -71,7 +69,6 @@ const REPORTS = [
       { label: 'YTD Spend', val: '$56,660' },
       { label: 'Cert. Alerts', val: '3' },
     ],
-    trend: [{ label: 'Jan', value: 8400 }, { label: 'Feb', value: 9100 }, { label: 'Mar', value: 9420 }],
     pages: 10, size: '1.2 MB',
   },
   {
@@ -81,14 +78,13 @@ const REPORTS = [
     icon: '📋',
     color: '#f1c21b',
     bg: '#fdf6dd',
-    scope: ['accountant', 'admin', 'executive'],
+    scope: ['admin'],
     stats: [
       { label: 'Audit Events', val: '214' },
       { label: 'Exceptions', val: '6' },
       { label: 'Rejected', val: '11' },
       { label: 'Failed Logins', val: '3' },
     ],
-    trend: [{ label: 'Wk1', value: 44 }, { label: 'Wk2', value: 68 }, { label: 'Wk3', value: 92 }, { label: 'Wk4', value: 214 }],
     pages: 14, size: '1.8 MB',
   },
   {
@@ -105,7 +101,6 @@ const REPORTS = [
       { label: 'On Budget', val: '8' },
       { label: 'Avg Variance', val: '-$48' },
     ],
-    trend: [{ label: 'Sh-03', value: 74 }, { label: 'Sh-08', value: 96 }, { label: 'Sh-11', value: 97 }, { label: 'Sh-19', value: 45 }, { label: 'Sh-22', value: 56 }],
     pages: 9, size: '1.1 MB',
   },
   {
@@ -122,7 +117,6 @@ const REPORTS = [
       { label: 'Budget Used', val: '90%' },
       { label: 'Exceptions', val: '1' },
     ],
-    trend: [{ label: 'Wk1', value: 120 }, { label: 'Wk2', value: 280 }, { label: 'Wk3', value: 400 }, { label: 'Wk4', value: 720 }],
     pages: 4, size: '0.4 MB',
   },
   {
@@ -139,7 +133,6 @@ const REPORTS = [
       { label: 'Unverified', val: '1' },
       { label: 'Total', val: '7' },
     ],
-    trend: [{ label: 'Jan', value: 5 }, { label: 'Feb', value: 6 }, { label: 'Mar', value: 6 }],
     pages: 6, size: '0.7 MB',
   },
   {
@@ -156,7 +149,6 @@ const REPORTS = [
       { label: 'Top Category', val: 'Maintenance' },
       { label: 'Top Share', val: '37%' },
     ],
-    trend: [{ label: 'Maint.', value: 6840 }, { label: 'Equip.', value: 4440 }, { label: 'Gas', value: 3210 }, { label: 'Clean', value: 2890 }, { label: 'Stat.', value: 1040 }],
     pages: 8, size: '1.0 MB',
   },
 ];
@@ -183,17 +175,25 @@ const ROLE_TITLES = {
 export default function ReportsDashboard() {
   const { session, addToast } = useApp();
   const role = session?.roleKey ?? 'executive';
-  const [month, setMonth] = useState(MONTHS[0]);
-  const [brand, setBrand] = useState('All Brands');
   const [tab, setTab] = useState(0);
+
+  const [brand, setBrand] = useState('All Brands');
+  const [shop, setShop] = useState('All Shops');
+  const [location, setLocation] = useState('All Locations');
+  const [timeframe, setTimeframe] = useState('This Month');
+  const [customFrom, setCustomFrom] = useState('2025-03-01');
+  const [customTo, setCustomTo] = useState('2025-03-31');
 
   const visibleReports = REPORTS.filter(r => r.scope.includes(role));
   const roleInfo = ROLE_TITLES[role] || ROLE_TITLES.executive;
 
-  const handleDownload = (r) => addToast('ok', `Generating ${r.id}`, `${r.title} · ${month} · PDF downloading…`);
-  const handlePreview  = (r) => addToast('info', `Preview — ${r.id}`, `${r.title} · ${month} · Opening preview…`);
+  const handleDownload = (r) => addToast('ok', `Generating ${r.id}`, `${r.title} · ${timeframe}${brand !== 'All Brands' ? ` · ${brand}` : ''} · PDF downloading…`);
+  const handlePreview  = (r) => addToast('info', `Preview — ${r.id}`, `${r.title} · ${timeframe}${brand !== 'All Brands' ? ` · ${brand}` : ''} · Opening preview…`);
 
-  const tabs = ['Report Library', 'Download History'];
+  const filterSummary = [timeframe, brand !== 'All Brands' ? brand : null, shop !== 'All Shops' ? shop : null, location !== 'All Locations' ? location : null].filter(Boolean).join(' · ');
+  const customRange = timeframe === 'Custom' ? `${customFrom} — ${customTo}` : '';
+
+  const tabs = ['Report Library', 'Custom Reports'];
 
   return (
     <>
@@ -214,21 +214,34 @@ export default function ReportsDashboard() {
           <div className="kg c4">
             <div className="kc bl"><div className="kl">Available Reports</div><div className="kv">{visibleReports.length}</div><div className="kd nt">For your role</div><div className="ki">📄</div></div>
             <div className="kc gn"><div className="kl">Last Generated</div><div className="kv">21 Feb</div><div className="kd nt">Brand Expenditure</div><div className="ki">✓</div></div>
-            <div className="kc yw"><div className="kl">Reporting Period</div><div className="kv">March 2025</div><div className="kd nt">Current month</div><div className="ki">📅</div></div>
+            <div className="kc yw"><div className="kl">Reporting Period</div><div className="kv">{timeframe === 'Custom' ? 'Custom' : timeframe}</div><div className="kd nt">{timeframe === 'Custom' ? customRange : 'Selected period'}</div><div className="ki">📅</div></div>
             <div className="kc pr"><div className="kl">Total Downloads (QTD)</div><div className="kv">48</div><div className="kd nt">This quarter</div><div className="ki">⬇</div></div>
           </div>
 
           <div className="tbbar">
             <div className="tbt">Report Library</div>
-            <select className="fsel" style={{ width: 170, height: 32, fontSize: 12 }} value={month} onChange={e => setMonth(e.target.value)}>
-              {MONTHS.map(m => <option key={m}>{m}</option>)}
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+            <select className="fsel" style={{ width: 150, height: 32, fontSize: 12 }} value={brand} onChange={e => setBrand(e.target.value)}>
+              {BRANDS_LIST.map(b => <option key={b}>{b}</option>)}
             </select>
-            {(role === 'executive' || role === 'procurement') && (
-              <select className="fsel" style={{ width: 150, height: 32, fontSize: 12 }} value={brand} onChange={e => setBrand(e.target.value)}>
-                {BRANDS_LIST.map(b => <option key={b}>{b}</option>)}
-              </select>
+            <select className="fsel" style={{ width: 150, height: 32, fontSize: 12 }} value={shop} onChange={e => setShop(e.target.value)}>
+              {SHOPS_LIST.map(s => <option key={s}>{s}</option>)}
+            </select>
+            <select className="fsel" style={{ width: 150, height: 32, fontSize: 12 }} value={location} onChange={e => setLocation(e.target.value)}>
+              {LOCATIONS.map(l => <option key={l}>{l}</option>)}
+            </select>
+            <select className="fsel" style={{ width: 150, height: 32, fontSize: 12 }} value={timeframe} onChange={e => setTimeframe(e.target.value)}>
+              {TIMEFRAMES.map(t => <option key={t}>{t}</option>)}
+            </select>
+            {timeframe === 'Custom' && (
+              <>
+                <input className="fin" type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} style={{ width: 140, height: 32, fontSize: 12 }} />
+                <input className="fin" type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} style={{ width: 140, height: 32, fontSize: 12 }} />
+              </>
             )}
-            <button className="ab sec" style={{ height: 32, fontSize: 12 }} onClick={() => addToast('ok', 'All reports queued', `${visibleReports.length} reports generating for ${month}…`)}>Download All</button>
+            <button className="ab sec" style={{ height: 32, fontSize: 12 }} onClick={() => addToast('ok', 'All reports queued', `${visibleReports.length} reports generating for ${filterSummary}…`)}>Download All</button>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16, marginBottom: 20 }}>
@@ -248,12 +261,6 @@ export default function ReportsDashboard() {
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--ts)', lineHeight: 1.5 }}>{r.desc}</div>
 
-                {/* Sparkline trend */}
-                <div style={{ background: 'var(--l2)', padding: '8px 10px 4px' }}>
-                  <div style={{ fontSize: 10, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace", marginBottom: 4 }}>Trend</div>
-                  <LineChart data={r.trend} color={r.color} height={60} />
-                </div>
-
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                   {r.stats.map(s => (
                     <div key={s.label} style={{ background: 'var(--l2)', padding: '7px 10px' }}>
@@ -272,7 +279,7 @@ export default function ReportsDashboard() {
                   </button>
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace" }}>
-                  Period: <strong>{month}</strong>{(role === 'executive' || role === 'procurement') && brand !== 'All Brands' ? ` · ${brand}` : ''}
+                  Period: <strong>{timeframe === 'Custom' ? customRange : timeframe}</strong>{brand !== 'All Brands' ? ` · ${brand}` : ''}{shop !== 'All Shops' ? ` · ${shop}` : ''}{location !== 'All Locations' ? ` · ${location}` : ''}
                 </div>
               </div>
             ))}

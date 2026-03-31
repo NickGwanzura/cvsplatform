@@ -2,10 +2,9 @@ import { useApp } from '../../context/AppContext';
 import { ROLES } from '../../data/mockData';
 
 export default function AppHeader() {
-  const { session, logout, headerTitle, openModal, navOpen, setNavOpen } = useApp();
+  const { session, headerTitle, openModal, navOpen, setNavOpen } = useApp();
   if (!session) return null;
   const r = ROLES[session.roleKey];
-  const initials = session.name.split(' ').map(n => n[0]).join('').slice(0, 2);
 
   return (
     <header style={{
@@ -28,28 +27,17 @@ export default function AppHeader() {
       </div>
       <div className="cvs-header-divider" />
       <div className="cvs-header-title">{headerTitle}</div>
-      <span className="cvs-header-tag" style={{ background: session.color }}>CVS</span>
-      <div style={{ display: 'flex', alignItems: 'center' }}>
-        <button
-          style={{ width: 44, height: 48, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tp)' }}
-          onClick={() => openModal('notifM')}
-          title="Notifications"
-        >
-          <svg width="16" height="16" viewBox="0 0 32 32" fill="currentColor">
-            <path d="M28.7 19.3L26 16.6V13a10 10 0 00-8-9.8V2h-4v1.2A10 10 0 006 13v3.6l-2.7 2.7A1 1 0 004 21h7a5 5 0 0010 0h7a1 1 0 00.7-1.7zM16 23a3 3 0 01-3-2h6a3 3 0 01-3 2z" />
-          </svg>
-        </button>
-        <button
-          style={{ width: 44, height: 48, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--tp)' }}
-          onClick={logout}
-          title="Sign out"
-        >
-          <svg width="16" height="16" viewBox="0 0 32 32" fill="currentColor">
-            <path d="M12 4H4v24h8v-2H6V6h6zm8 18l-1.5-1.5L22 17H10v-2h12l-3.5-3.5L20 10l6 6z" />
-          </svg>
-        </button>
-        <div className="cvs-header-av" style={{ background: session.color }}>{initials}</div>
-      </div>
+      <div style={{ flex: 1 }} />
+      <button
+        className="cvs-notif-btn"
+        onClick={() => openModal('notifM')}
+        title="Notifications"
+      >
+        <svg width="22" height="22" viewBox="0 0 32 32" fill="currentColor">
+          <path d="M28.7 19.3L26 16.6V13a10 10 0 00-8-9.8V2h-4v1.2A10 10 0 006 13v3.6l-2.7 2.7A1 1 0 004 21h7a5 5 0 0010 0h7a1 1 0 00.7-1.7zM16 23a3 3 0 01-3-2h6a3 3 0 01-3 2z" />
+        </svg>
+        <span className="cvs-notif-pulse" />
+      </button>
 
       {/* Notifications modal inline */}
       <NotificationsModal />

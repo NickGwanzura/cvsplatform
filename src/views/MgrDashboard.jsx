@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import StatusTag from '../components/shared/StatusTag';
-import AuditLog from '../components/shared/AuditLog';
+import Breadcrumbs from '../components/shared/Breadcrumbs';
 import { ExceptionRequestModal, RequestDetailModal } from '../components/modals/AllModals';
 
 const REQUESTS = [
@@ -9,14 +9,6 @@ const REQUESTS = [
   { id: 'PC-0039', date: '18 Mar', cat: 'Gas', purpose: 'Gas cylinder refill', supplier: 'ZimGas', amt: '$120', status: 'paid', txn: 'IB-TXN-93391' },
   { id: 'PC-0035', date: '12 Mar', cat: 'Maintenance', purpose: 'Door seal repair', supplier: 'Swift Maintenance', amt: '$200', status: 'paid', txn: 'IB-TXN-93350' },
   { id: 'PC-0028', date: '28 Feb', cat: 'Emergency', purpose: 'Emergency plumbing', supplier: 'AquaFix', amt: '$340', status: 'rejected' },
-];
-
-const LOGS = [
-  { color: 'var(--er)', time: '23 Mar 13:10', text: '<strong>THRESHOLD ALERT</strong> — Sh-14 reached 90% of $800 monthly budget', user: 'System Auto · Notified: Accountant, Brand Manager' },
-  { color: 'var(--wa)', time: '23 Mar 08:14', text: '<strong>REQUEST SUBMITTED</strong> — PC-0041 · $180 · Cleaning Supplies · CleanPro', user: 'K. Mutasa (Shop Manager) · Sh-14 Borrowdale' },
-  { color: 'var(--ok)', time: '18 Mar 14:30', text: '<strong>PAYMENT RECEIVED</strong> — PC-0039 · $120 · InnBucks TXN-93391', user: 'K. Mutasa (Shop Manager) · ZimGas' },
-  { color: 'var(--ok)', time: '12 Mar 11:05', text: '<strong>PAYMENT RECEIVED</strong> — PC-0035 · $200 · InnBucks TXN-93350', user: 'K. Mutasa (Shop Manager) · Swift Maintenance' },
-  { color: 'var(--er)', time: '28 Feb 09:00', text: '<strong>REQUEST REJECTED</strong> — PC-0028 · $340 · Amount exceeded budget limit', user: 'C. Mutandwa (Brand Accountant) · Pizza Inn' },
 ];
 
 export default function MgrDashboard() {
@@ -27,7 +19,12 @@ export default function MgrDashboard() {
   return (
     <>
       <div className="ph">
-        <div className="bc">CVS <span>/</span> Chicken Inn <span>/</span> Sh-14 Borrowdale <span>/</span> Dashboard</div>
+        <Breadcrumbs items={[
+          { label: 'CVS' },
+          { label: 'Chicken Inn' },
+          { label: 'Sh-14 Borrowdale' },
+          { label: 'Dashboard' },
+        ]} />
         <div className="pt">Good morning, K. Mutasa</div>
         <div className="pd">Chicken Inn — Sh-14 Borrowdale &nbsp;|&nbsp; Tuesday 23 March 2025</div>
       </div>
@@ -72,8 +69,6 @@ export default function MgrDashboard() {
           </tbody>
         </table>
 
-        <div style={{ height: 20 }} />
-        <AuditLog title="Audit Log — Sh-14 Borrowdale (My Activity)" entries={LOGS} />
       </div>
 
       <ExceptionRequestModal open={showExc} onClose={() => setShowExc(false)} />

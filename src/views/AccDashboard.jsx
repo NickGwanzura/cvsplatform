@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import StatusTag from '../components/shared/StatusTag';
-import BrandChip from '../components/shared/BrandChip';
-import AuditLog from '../components/shared/AuditLog';
 import LineChart from '../components/shared/LineChart';
+import Breadcrumbs from '../components/shared/Breadcrumbs';
 import { ValidateModal, BudgetModal, RejectModal, RequestDetailModal } from '../components/modals/AllModals';
 
 const SHOPS = [
@@ -30,13 +29,6 @@ const QUEUE_DATA = [
   { id: 'PC-0037', mgr: 'P. Moyo',     shop: 'Sh-08 Sam Levy',   cat: 'Emergency',   supplier: 'AquaFix',     amt: '$280', rawAmt: 280, budget: 'over',   rowBg: '#fff8f8' },
   { id: 'PC-0036', mgr: 'B. Chikwete', shop: 'Sh-11 Highfield',  cat: 'Maintenance', supplier: 'FastFix',     amt: '$190', rawAmt: 190, budget: 'within', rowBg: null },
   { id: 'PC-0033', mgr: 'R. Mhondoro', shop: 'Sh-19 Eastgate',   cat: 'Cleaning',    supplier: 'CleanPro',    amt: '$80',  rawAmt: 80,  budget: 'within', rowBg: null },
-];
-
-const LOGS = [
-  { color: 'var(--er)', time: '23 Mar 13:10', text: '<strong>THRESHOLD ALERT</strong> — Sh-08 Sam Levy at 96% of $900 monthly budget', user: 'System Auto · Pizza Inn', chip: <BrandChip brand="Pizza Inn" /> },
-  { color: 'var(--int)', time: '23 Mar 11:42', text: '<strong>VALIDATED</strong> — PC-0044 · $450 · Adjusted from $450 to $400 · Forwarded to Brand Manager', user: 'C. Mutandwa (Brand Accountant) · Pizza Inn Sh-03', chip: <BrandChip brand="Pizza Inn" /> },
-  { color: 'var(--ok)', time: '22 Mar 09:05', text: '<strong>BUDGET SET</strong> — Sh-08 Sam Levy monthly budget set to $900', user: 'C. Mutandwa (Brand Accountant) · Pizza Inn', chip: <BrandChip brand="Pizza Inn" /> },
-  { color: 'var(--wa)', time: '22 Mar 08:30', text: '<strong>REQUEST SUBMITTED</strong> — PC-0043 · $95 · Cleaning Supplies', user: 'R. Mhondoro (Shop Manager) · Pizza Inn Sh-19', chip: <BrandChip brand="Pizza Inn" /> },
 ];
 
 const pctColor = (p) => p >= 90 ? 'var(--er)' : p >= 70 ? 'var(--wa-t)' : 'var(--ok-t)';
@@ -74,7 +66,12 @@ export default function AccDashboard() {
   return (
     <>
       <div className="ph">
-        <div className="bc">CVS <span>/</span> Pizza Inn <span>/</span> Brand Accountant <span>/</span> Dashboard</div>
+        <Breadcrumbs items={[
+          { label: 'CVS' },
+          { label: 'Pizza Inn' },
+          { label: 'Brand Accountant' },
+          { label: 'Dashboard' },
+        ]} />
         <div className="pt">Brand Accountant Dashboard — Pizza Inn</div>
         <div className="pd">All shops under Pizza Inn brand · Tuesday 23 March 2025</div>
         <div className="ptabs">
@@ -232,11 +229,7 @@ export default function AccDashboard() {
               ))}
             </tbody>
           </table>
-          <div style={{ height: 20 }} />
-          <AuditLog title="Audit Log — Budget Changes" entries={LOGS.filter(l => l.text.includes('BUDGET') || l.text.includes('ALERT'))} />
         </>)}
-
-        {tab !== 1 && (<><div style={{ height: 20 }} /><AuditLog title="Audit Log — Pizza Inn (Brand Accountant View)" entries={LOGS} /></>)}
       </div>
 
       <ValidateModal open={!!validateTarget} onClose={() => setValidateTarget(null)} request={validateTarget} />
