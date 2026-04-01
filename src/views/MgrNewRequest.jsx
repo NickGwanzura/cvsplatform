@@ -64,8 +64,6 @@ export default function MgrNewRequest() {
           { label: 'Sh-14' },
           { label: 'New Request' },
         ]} />
-        <div className="pt">Submit Petty Cash Request</div>
-        <div className="pd">Funds disbursed via InnBucks upon Brand Manager approval</div>
       </div>
       <div className="cnt">
         {/* Steps */}

@@ -73,8 +73,6 @@ export default function AccDashboard() {
           { label: 'Brand Accountant' },
           { label: 'Dashboard' },
         ]} />
-        <div className="pt">Brand Accountant Dashboard — Pizza Inn</div>
-        <div className="pd">All shops under Pizza Inn brand · Tuesday 23 March 2025</div>
         <div className="ptabs">
           {tabs.map((t, i) => (
             <button key={t} className={`ptab${tab === i ? ' on' : ''}`} onClick={() => setTab(i)}>{t}</button>

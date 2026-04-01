@@ -26,13 +26,6 @@ export default function LoginPage() {
     <div className={`lg-wrap${session ? ' out' : ''}`}>
       <div className="lg-l">
         <div>
-          <div className="lg-logo">
-            <div className="lg-sq">CVS</div>
-            <div>
-              <div className="lg-nm">CVS</div>
-              <div className="lg-sb">Cash Verification System</div>
-            </div>
-          </div>
           <div className="lg-h">Cashless.<br />Verified.<br /><em>Instant.</em></div>
           <div className="lg-p">
             End-to-end petty cash automation powered by InnBucks across all Simbisa brands. Built with the IBM Carbon Design System.

@@ -64,8 +64,6 @@ export default function AdminDashboard() {
           { label: 'Admin' },
           { label: 'User Management' },
         ]} />
-        <div className="pt">System Administration</div>
-        <div className="pd">Invite users, manage roles and monitor system access</div>
         <div className="ptabs">
           {tabs.map((t, i) => (
             <button key={t} className={`ptab${tab === i ? ' on' : ''}`} onClick={() => setTab(i)}>{t}</button>

@@ -205,8 +205,6 @@ export default function ReportsDashboard() {
           { label: roleInfo.heading },
           { label: 'Reports' },
         ]} />
-        <div className="pt">Reports & Exports</div>
-        <div className="pd">{roleInfo.sub}</div>
         <div className="ptabs">
           {tabs.map((t, i) => (
             <button key={t} className={`ptab${tab === i ? ' on' : ''}`} onClick={() => setTab(i)}>{t}</button>

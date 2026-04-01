@@ -141,8 +141,6 @@ export default function ExecDashboard() {
           { label: 'Executive', nav: { v: 'exec-dashboard', lb: 'Group Overview' }, navIdx: 0 },
           { label: 'Overview' },
         ]} />
-        <div className="pt">Executive Dashboard — Simbisa Group</div>
-        <div className="pd">Group-wide petty cash, InnBucks sales and supplier intelligence · Dual currency: USD / ZWL</div>
         <div className="ptabs">
           {tabs.map((t, i) => (
             <button key={t} className={`ptab${tab === i ? ' on' : ''}`} onClick={() => setTab(i)}>{t}</button>

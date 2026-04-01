@@ -110,8 +110,6 @@ export default function ProcDashboard() {
           { label: 'Procurement' },
           { label: 'Dashboard' },
         ]} />
-        <div className="pt">Procurement Dashboard</div>
-        <div className="pd">Supplier profiles, products, spend analytics, and statements</div>
         <div className="ptabs">
           {tabs.map((t, i) => (
             <button key={t} className={`ptab${tab === i ? ' on' : ''}`} onClick={() => setTab(i)}>{t}</button>

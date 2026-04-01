@@ -25,8 +25,6 @@ export default function MgrDashboard() {
           { label: 'Sh-14 Borrowdale' },
           { label: 'Dashboard' },
         ]} />
-        <div className="pt">Good morning, K. Mutasa</div>
-        <div className="pd">Chicken Inn — Sh-14 Borrowdale &nbsp;|&nbsp; Tuesday 23 March 2025</div>
       </div>
       <div className="cnt">
         <div className="thresh">

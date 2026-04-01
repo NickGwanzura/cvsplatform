@@ -82,8 +82,6 @@ export default function BmDashboard() {
           { label: 'Brand Manager' },
           { label: 'Approvals' },
         ]} />
-        <div className="pt">Brand Manager Dashboard — Chicken Inn</div>
-        <div className="pd">Pending approvals, batch payments and InnBucks sales for Chicken Inn</div>
         <div className="ptabs">
           {tabs.map((t, i) => (
             <button key={t} className={`ptab${tab === i ? ' on' : ''}`} onClick={() => setTab(i)}>{t}</button>
