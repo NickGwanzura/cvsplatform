@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import Breadcrumbs from '../components/shared/Breadcrumbs';
 import { SubmitRequestModal, NewSupplierModal } from '../components/modals/AllModals';
 
 const STEPS = ['Details', 'Supplier', 'Submit'];
@@ -57,7 +58,12 @@ export default function MgrNewRequest() {
   return (
     <>
       <div className="ph">
-        <div className="bc">CVS <span>/</span> Chicken Inn <span>/</span> Sh-14 <span>/</span> New Request</div>
+        <Breadcrumbs items={[
+          { label: 'CVS' },
+          { label: 'Chicken Inn' },
+          { label: 'Sh-14' },
+          { label: 'New Request' },
+        ]} />
         <div className="pt">Submit Petty Cash Request</div>
         <div className="pd">Funds disbursed via InnBucks upon Brand Manager approval</div>
       </div>

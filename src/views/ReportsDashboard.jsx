@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import Breadcrumbs from '../components/shared/Breadcrumbs';
 
 const BRANDS_LIST = ['All Brands', 'Chicken Inn', 'Pizza Inn', 'Creamy Inn', "Nando's", 'Steers', "Roco Mamma's", 'Ocean Basket', 'Hefelies', "Pastino's"];
 const SHOPS_LIST = ['All Shops', 'Sh-03 Avondale', 'Sh-07 Avondale', 'Sh-08 Sam Levy', 'Sh-11 Highfield', 'Sh-14 Borrowdale', 'Sh-19 Eastgate', 'Sh-22 Eastgate', 'Sh-05 Borrowdale'];
@@ -173,11 +174,12 @@ const ROLE_TITLES = {
 };
 
 export default function ReportsDashboard() {
-  const { session, addToast } = useApp();
+  const { session, addToast, brandFilter, setBrandFilter } = useApp();
   const role = session?.roleKey ?? 'executive';
   const [tab, setTab] = useState(0);
 
-  const [brand, setBrand] = useState('All Brands');
+  const brand = brandFilter;
+  const setBrand = setBrandFilter;
   const [shop, setShop] = useState('All Shops');
   const [location, setLocation] = useState('All Locations');
   const [timeframe, setTimeframe] = useState('This Month');
@@ -198,7 +200,11 @@ export default function ReportsDashboard() {
   return (
     <>
       <div className="ph">
-        <div className="bc">CVS <span>/</span> {roleInfo.heading} <span>/</span> Reports</div>
+        <Breadcrumbs items={[
+          { label: 'CVS' },
+          { label: roleInfo.heading },
+          { label: 'Reports' },
+        ]} />
         <div className="pt">Reports & Exports</div>
         <div className="pd">{roleInfo.sub}</div>
         <div className="ptabs">

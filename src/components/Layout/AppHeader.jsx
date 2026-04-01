@@ -73,7 +73,7 @@ function NotificationsModal() {
           ))}
         </div>
         <div style={{ padding: '13px 20px', borderTop: '1px solid var(--bs)', display: 'flex', justifyContent: 'flex-end' }}>
-          <button className="ab pri" style={{ height: 42, padding: '0 20px' }} onClick={() => closeModal('notifM')}>Mark all read</button>
+          <button className="ab pri lg" onClick={() => closeModal('notifM')}>Mark all read</button>
         </div>
       </div>
     </div>

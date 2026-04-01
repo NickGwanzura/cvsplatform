@@ -10,7 +10,7 @@ export function RequestDetailModal({ request, onClose }) {
   if (!request) return null;
   return (
     <CvsModal open={!!request} onClose={onClose} title={`Request Detail — ${request.id}`} subtitle={`${request.cat} · ${request.supplier}`}
-      footer={<button className="ab pri" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Close</button>}
+      footer={<button className="ab pri lg" onClick={onClose}>Close</button>}
     >
       {[
         { label: 'Request ID', value: <code style={{ color: 'var(--info)', fontFamily: "'IBM Plex Mono',monospace" }}>{request.id}</code> },
@@ -431,17 +431,21 @@ export function InviteUserModal({ open, onClose }) {
             {BRANDS.map(b => <option key={b}>{b}</option>)}
           </select>
         </div>
-        <div className="fi">
-          <label className="fl">Shop (if Manager)</label>
-          <select className="fsel" value={form.shop} onChange={e => set('shop', e.target.value)}>
-            {['N/A','Sh-14 Borrowdale','Sh-07 Avondale','Sh-22 Eastgate','Sh-03 Avondale','Sh-11 Highfield'].map(s => <option key={s}>{s}</option>)}
-          </select>
-        </div>
-        <div className="fi">
-          <label className="fl">Monthly Budget Limit</label>
-          <input className="fin" type="number" value={form.budget} onChange={e => set('budget', e.target.value)} placeholder="e.g. 800" />
-          <div className="fh">For Shop Managers only</div>
-        </div>
+        {form.role === 'Shop Manager' && (
+          <div className="fi">
+            <label className="fl">Shop</label>
+            <select className="fsel" value={form.shop} onChange={e => set('shop', e.target.value)}>
+              {['N/A','Sh-14 Borrowdale','Sh-07 Avondale','Sh-22 Eastgate','Sh-03 Avondale','Sh-11 Highfield'].map(s => <option key={s}>{s}</option>)}
+            </select>
+          </div>
+        )}
+        {form.role === 'Shop Manager' && (
+          <div className="fi">
+            <label className="fl">Monthly Budget Limit</label>
+            <input className="fin" type="number" value={form.budget} onChange={e => set('budget', e.target.value)} placeholder="e.g. 800" />
+            <div className="fh">Set the monthly petty cash budget for this shop</div>
+          </div>
+        )}
         <div className="fi full">
           <label className="fl">Note to User (in invite email)</label>
           <input className="fin" type="text" value={form.note} onChange={e => set('note', e.target.value)} placeholder="Welcome to CVS. Click the link to set your password." />
@@ -559,6 +563,40 @@ export function StatementModal({ open, onClose }) {
           <span>Simbisa Brands Ltd · CVS InnBucks Statement · CONFIDENTIAL</span>
           <span>Cash Verification System · Powered by InnBucks API</span>
         </div>
+      </div>
+    </CvsModal>
+  );
+}
+
+/* ── Profile Modal ──────────────────────────────────────────────────── */
+export function ProfileModal({ open, onClose }) {
+  const { session, addToast } = useApp();
+  if (!session) return null;
+  const [form, setForm] = useState({ name: session.name, email: session.email || '', phone: session.phone || '' });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  return (
+    <CvsModal open={!!open} onClose={onClose} title="My Profile" subtitle="View and edit your account details"
+      footer={<>
+        <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Cancel</button>
+        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} onClick={() => { onClose(); addToast('ok', 'Profile updated', 'Your account details have been saved'); }}>
+          Save Changes
+        </button>
+      </>}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18, padding: 14, background: 'var(--l2)', border: '1px solid var(--bs)' }}>
+        <div style={{ width: 48, height: 48, borderRadius: '50%', background: session.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+          {session.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+        </div>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--tp)' }}>{session.name}</div>
+          <div style={{ fontSize: 12, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace" }}>{session.roleLabel || session.roleKey}</div>
+          <div style={{ fontSize: 11, color: 'var(--int)', marginTop: 2 }}>{session.brand}</div>
+        </div>
+      </div>
+      <div className="fg">
+        <div className="fi"><label className="fl">Full Name</label><input className="fin" value={form.name} onChange={e => set('name', e.target.value)} /></div>
+        <div className="fi"><label className="fl">Email Address</label><input className="fin" type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder={session.email || 'No email on file'} /></div>
+        <div className="fi"><label className="fl">Phone Number</label><input className="fin" type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder={session.phone || 'No phone on file'} /></div>
       </div>
     </CvsModal>
   );

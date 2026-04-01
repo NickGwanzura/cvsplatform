@@ -29,8 +29,8 @@ export const ROLES = {
     label: 'Procurement', name: 'R. Chikwanda', brand: 'Head Office', color: '#6929c4', code: 'HO',
     nav: [
       { v: 'proc-dashboard', lb: 'Overview',         tab: 0 },
-      { v: 'proc-dashboard', lb: 'Supplier Trends',  tab: 1 },
-      { v: 'proc-dashboard', lb: 'Product Trends',   tab: 2 },
+      { v: 'proc-dashboard', lb: 'Supplier Analytics',  tab: 1 },
+      { v: 'proc-dashboard', lb: 'Product Analytics',   tab: 2 },
       { v: 'proc-dashboard', lb: 'Supplier Portal',  tab: 3, badge: '2' },
       { v: 'reports',        lb: 'Reports' },
     ]
@@ -49,7 +49,7 @@ export const ROLES = {
       { v: 'exec-dashboard', lb: 'Group Overview',   tab: 0 },
       { v: 'exec-dashboard', lb: 'Brand Breakdown',  tab: 1 },
       { v: 'exec-dashboard', lb: 'InnBucks Sales',   tab: 2, badge: 'Live', live: true },
-      { v: 'exec-dashboard', lb: 'Supplier Trends',  tab: 3 },
+      { v: 'exec-dashboard', lb: 'Supplier Analytics',  tab: 3 },
       { v: 'reports',        lb: 'Reports' },
     ]
   }

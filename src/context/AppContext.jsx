@@ -14,6 +14,7 @@ export function AppProvider({ children }) {
   // batch selection for BM dashboard
   const [batchSelected, setBatchSelected] = useState([]);
   const [navOpen, setNavOpen] = useState(false);
+  const [brandFilter, setBrandFilter] = useState('All Brands');
 
   const login = useCallback((roleKey, roleData) => {
     setSession({ roleKey, ...roleData });
@@ -61,6 +62,7 @@ export function AppProvider({ children }) {
       modals, openModal, closeModal,
       batchSelected, setBatchSelected,
       navOpen, setNavOpen,
+      brandFilter, setBrandFilter,
     }}>
       {children}
     </AppContext.Provider>

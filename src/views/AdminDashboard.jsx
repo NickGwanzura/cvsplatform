@@ -19,7 +19,7 @@ const ROLES_CONFIG = [
   { role: 'Brand Accountant', count: 9, perms: ['Validate requests', 'Adjust amounts', 'Reject requests', 'Set budgets', 'View brand reports'] },
   { role: 'Brand Manager',   count: 9,  perms: ['Approve payments', 'Batch pay via InnBucks', 'Approve exceptions', 'View brand analytics'] },
   { role: 'Procurement',     count: 3,  perms: ['Manage suppliers', 'Verify credentials', 'View spend analytics', 'Export reports'] },
-  { role: 'Executive',       count: 2,  perms: ['View all dashboards', 'Group-wide analytics', 'InnBucks sales', 'Supplier trends'] },
+  { role: 'Executive',       count: 2,  perms: ['View all dashboards', 'Group-wide analytics', 'InnBucks sales', 'Supplier analytics'] },
   { role: 'Admin',           count: 1,  perms: ['Invite users', 'Manage roles', 'View system audit', 'Configure settings'] },
 ];
 
@@ -33,7 +33,7 @@ const SYSTEM_LOGS = [
 ];
 
 export default function AdminDashboard() {
-  const { addToast, activeTab } = useApp();
+  const { addToast, activeTab, brandFilter, setBrandFilter } = useApp();
   const [tab, setTab] = useState(activeTab ?? 0);
   useEffect(() => { setTab(activeTab ?? 0); }, [activeTab]);
   const [showInvite, setShowInvite] = useState(false);
@@ -42,7 +42,6 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState(USERS_DATA);
   const [logSearch, setLogSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
-  const [brandFilter, setBrandFilter] = useState('All');
 
   const cancelInvite = (email) => {
     setUsers(u => u.filter(x => x.email !== email));
@@ -51,7 +50,7 @@ export default function AdminDashboard() {
 
   const filteredLogs = SYSTEM_LOGS.filter(l => {
     const matchRole = roleFilter === 'All' || l.user.includes(roleFilter);
-    const matchBrand = brandFilter === 'All' || l.user.includes(brandFilter) || l.text.includes(brandFilter);
+    const matchBrand = brandFilter === 'All Brands' || l.user.includes(brandFilter) || l.text.includes(brandFilter);
     return matchRole && matchBrand;
   });
 
@@ -107,7 +106,9 @@ export default function AdminDashboard() {
                   <td>
                     <div className="ra">
                       {u.status === 'active' ? (
-                        <><button className="rb ed" onClick={() => setEditUser(u)}>Edit</button>
+                        <><button className="rb ed" onClick={() => setEditUser(u)} title="Edit user">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                      </button>
                           <button className="rb rj" onClick={() => setRevokeUser(u)}>Revoke</button></>
                       ) : (
                         <><button className="rb ap" onClick={() => addToast('ok', 'Invite resent', `Email dispatched to ${u.email}`)}>Resend</button>
@@ -160,7 +161,9 @@ export default function AdminDashboard() {
                       <span style={{ fontSize: 10, fontFamily: "'IBM Plex Mono',monospace", color: 'var(--ts)' }}>{Math.round((6-i)/6*100)}%</span>
                     </div>
                   </td>
-                  <td><button className="rb ed" onClick={() => addToast('info', `Edit ${r.role}`, 'Role permission editor opened')}>Edit</button></td>
+                  <td><button className="rb ed" onClick={() => addToast('info', `Edit ${r.role}`, 'Role permission editor opened')} title="Edit role">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                      </button></td>
                 </tr>
               ))}
             </tbody>
@@ -183,8 +186,8 @@ export default function AdminDashboard() {
               <option>Brand Manager</option><option>Brand Accountant</option><option>Procurement</option><option>Admin</option>
             </select>
             <select className="fsel" style={{ width: 130, height: 32, fontSize: 12 }} value={brandFilter} onChange={e => setBrandFilter(e.target.value)}>
-              <option value="All">All Brands</option>
-              <option>Chicken Inn</option><option>Pizza Inn</option><option>Roco Mamma's</option>
+              <option value="All Brands">All Brands</option>
+              <option>Chicken Inn</option><option>Pizza Inn</option><option>Creamy Inn</option><option>Nando's</option><option>Steers</option><option>Roco Mamma's</option><option>Ocean Basket</option><option>Hefelies</option><option>Pastino's</option>
             </select>
           </div>
           <div style={{ background: 'var(--l1)', border: '1px solid var(--bs)', padding: '8px 14px' }}>

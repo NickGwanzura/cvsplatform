@@ -57,11 +57,10 @@ const trendColor = (t) => t > 0 ? 'var(--ok)' : t < 0 ? 'var(--er)' : 'var(--ts)
 const trendLabel = (t) => t === null ? '—' : t === 0 ? '0%' : `${t > 0 ? '↑' : '↓'} ${Math.abs(t)}%`;
 
 export default function ExecDashboard() {
-  const { activeTab } = useApp();
+  const { activeTab, brandFilter, setBrandFilter } = useApp();
   const [tab, setTab] = useState(activeTab ?? 0);
   useEffect(() => { setTab(activeTab ?? 0); }, [activeTab]);
 
-  const [brandFilter, setBrandFilter] = useState('All Brands');
   const [shopFilter, setShopFilter] = useState('All Shops');
   const [locationFilter, setLocationFilter] = useState('All Locations');
   const [timeframe, setTimeframe] = useState('This Month');
@@ -70,6 +69,16 @@ export default function ExecDashboard() {
 
   const [detailItem, setDetailItem] = useState(null);
   const [detailType, setDetailType] = useState('');
+  const [catFilter, setCatFilter] = useState(null);
+  const REPORT_METRICS = [
+    { id: 'petty-cash', label: 'Petty Cash', icon: '💳' },
+    { id: 'innbucks',   label: 'InnBucks Sales', icon: '📈' },
+    { id: 'suppliers',  label: 'Supplier Spend', icon: '🏭' },
+    { id: 'budget',     label: 'Budget Utilisation', icon: '📊' },
+  ];
+  const [reportMetrics, setReportMetrics] = useState(['petty-cash', 'innbucks']);
+  const [reportGroupBy, setReportGroupBy] = useState('brand');
+  const toggleMetric = (id) => setReportMetrics(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]);
 
   const matchesFilters = (item) => {
     if (brandFilter !== 'All Brands' && item.brand !== brandFilter) return false;
@@ -98,7 +107,7 @@ export default function ExecDashboard() {
     setDetailType(type);
   };
 
-  const tabs = ['Group Overview', 'Brand Breakdown', 'Petty Cash Expenses', 'InnBucks Sales', 'Supplier Trends'];
+  const tabs = ['Group Overview', 'Brand Breakdown', 'Petty Cash Expenses', 'InnBucks Sales', 'Supplier Analytics', 'Custom Reports'];
 
   const filterBar = (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -160,7 +169,6 @@ export default function ExecDashboard() {
                   { label: 'Budget', key: 'budget', barKey: 'budget' },
                   { label: 'Disbursed', key: 'disbursed', barKey: 'disbursed' },
                   { label: '% Used', key: 'pct' },
-                  { label: 'Alerts', key: 'alerts' },
                 ]}
                 data={filteredBrands.map(b => ({
                   ...b,
@@ -168,7 +176,6 @@ export default function ExecDashboard() {
                   budget: `$${b.budget.toLocaleString()}`,
                   disbursed: `$${b.disbursed.toLocaleString()}`,
                   pct: <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 600, color: pctColor(pctOf(b.disbursed, b.budget)) }}>{pctOf(b.disbursed, b.budget)}%</span>,
-                  alerts: b.alerts > 0 ? <StatusTag type={b.alertType} label={String(b.alerts)} /> : <span style={{ color: 'var(--ts)', fontSize: 12 }}>—</span>,
                 }))}
                 onRowClick={(row) => openDetail(filteredBrands.find(b => b.brand === (typeof row.brand === 'string' ? row.brand : '')) || row, 'brand-expenditure')}
               />
@@ -196,7 +203,7 @@ export default function ExecDashboard() {
                 onRowClick={(row) => !row.notLive && openDetail(row, 'innbucks')}
               />
               <div style={{ height: 16 }} />
-              <div className="tbbar"><div className="tbt">Supplier Trends — Group Level</div></div>
+              <div className="tbbar"><div className="tbt">Supplier Analytics — Group Level</div></div>
               <DataTable
                 columns={[
                   { label: 'Supplier', key: 'name' },
@@ -244,12 +251,6 @@ export default function ExecDashboard() {
                   </div>
                   <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 700, fontSize: 13, color, width: 40, textAlign: 'right' }}>{pct}%</span>
                   <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--ts)', width: 150, textAlign: 'right' }}>${b.disbursed.toLocaleString()} of ${b.budget.toLocaleString()}</span>
-                  <div style={{ width: 60, textAlign: 'right' }}>
-                    {b.alerts > 0
-                      ? <StatusTag type={b.alertType} label={String(b.alerts)} />
-                      : <span style={{ fontSize: 11, color: 'var(--ts)' }}>—</span>
-                    }
-                  </div>
                   <div style={{ width: 60, textAlign: 'right', fontSize: 11, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace" }}>{b.shops} shops</div>
                 </div>
               );
@@ -269,30 +270,74 @@ export default function ExecDashboard() {
             <div className="kc yw"><div className="kl">Pending</div><div className="kv">{filteredExpenses.filter(e => ['review','over'].includes(e.status)).length}</div><div className="kd nt">Awaiting action</div><div className="ki">⏳</div></div>
             <div className="kc rd"><div className="kl">Exceptions</div><div className="kv">{filteredExpenses.filter(e => e.status === 'over').length}</div><div className="kd dn">Over budget</div><div className="ki">🚨</div></div>
           </div>
-          <div className="tbbar"><div className="tbt">Petty Cash Expenses — All Brands</div></div>
-          <DataTable
-            columns={[
-              { label: 'ID', key: 'id' },
-              { label: 'Date', key: 'date' },
-              { label: 'Brand', key: 'brand' },
-              { label: 'Shop', key: 'shop' },
-              { label: 'Category', key: 'cat' },
-              { label: 'Supplier', key: 'supplier' },
-              { label: 'Amount', key: 'amt', barKey: 'amtRaw' },
-              { label: 'Status', key: 'status' },
-            ]}
-            data={filteredExpenses.map(e => ({
-              ...e,
-              id: <code style={{ color: 'var(--info)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>{e.id}</code>,
-              date: <span style={{ fontSize: 12, color: 'var(--ts)' }}>{e.date}</span>,
-              brand: <BrandChip brand={e.brand} />,
-              shop: <span style={{ fontSize: 12 }}>{e.shop}</span>,
-              amtRaw: e.amt,
-              amt: <strong>${e.amt}</strong>,
-              status: <StatusTag type={e.status} />,
-            }))}
-            onRowClick={(row) => openDetail(row, 'expense')}
-          />
+
+          {catFilter ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <button className="ab" style={{ height: 28, fontSize: 11, padding: '0 10px' }} onClick={() => setCatFilter(null)}>← All Categories</button>
+                <span style={{ fontSize: 12, color: 'var(--ts)' }}>Drilling into:</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--int)', background: 'var(--info-bg)', padding: '2px 10px', border: '1px solid var(--int)' }}>{catFilter}</span>
+              </div>
+              <div className="tbbar"><div className="tbt">{catFilter} — Store-level Breakdown</div></div>
+              <DataTable
+                columns={[
+                  { label: 'ID', key: 'id' },
+                  { label: 'Date', key: 'date' },
+                  { label: 'Brand', key: 'brand' },
+                  { label: 'Shop', key: 'shop' },
+                  { label: 'Location', key: 'location' },
+                  { label: 'Supplier', key: 'supplier' },
+                  { label: 'Amount', key: 'amt', barKey: 'amtRaw' },
+                  { label: 'Status', key: 'status' },
+                ]}
+                data={filteredExpenses.filter(e => e.cat === catFilter).map(e => ({
+                  ...e,
+                  id: <code style={{ color: 'var(--info)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>{e.id}</code>,
+                  date: <span style={{ fontSize: 12, color: 'var(--ts)' }}>{e.date}</span>,
+                  brand: <BrandChip brand={e.brand} />,
+                  shop: <span style={{ fontSize: 12, fontWeight: 600 }}>{e.shop}</span>,
+                  location: <span style={{ fontSize: 11, color: 'var(--ts)' }}>{e.location}</span>,
+                  amtRaw: e.amt,
+                  amt: <strong>${e.amt}</strong>,
+                  status: <StatusTag type={e.status} />,
+                }))}
+                onRowClick={(row) => openDetail(row, 'expense')}
+              />
+            </>
+          ) : (
+            <>
+              <div className="tbbar"><div className="tbt">Petty Cash Expenses — Click a Category to drill down to store level</div></div>
+              <DataTable
+                columns={[
+                  { label: 'ID', key: 'id' },
+                  { label: 'Date', key: 'date' },
+                  { label: 'Brand', key: 'brand' },
+                  { label: 'Shop', key: 'shop' },
+                  { label: 'Category', key: 'cat' },
+                  { label: 'Supplier', key: 'supplier' },
+                  { label: 'Amount', key: 'amt', barKey: 'amtRaw' },
+                  { label: 'Status', key: 'status' },
+                ]}
+                data={filteredExpenses.map(e => ({
+                  ...e,
+                  id: <code style={{ color: 'var(--info)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>{e.id}</code>,
+                  date: <span style={{ fontSize: 12, color: 'var(--ts)' }}>{e.date}</span>,
+                  brand: <BrandChip brand={e.brand} />,
+                  shop: <span style={{ fontSize: 12 }}>{e.shop}</span>,
+                  cat: (
+                    <span
+                      style={{ fontSize: 11, fontWeight: 600, color: 'var(--int)', background: 'var(--info-bg)', padding: '2px 8px', border: '1px solid var(--int)', cursor: 'pointer' }}
+                      onClick={ev => { ev.stopPropagation(); setCatFilter(e.cat); }}
+                    >{e.cat}</span>
+                  ),
+                  amtRaw: e.amt,
+                  amt: <strong>${e.amt}</strong>,
+                  status: <StatusTag type={e.status} />,
+                }))}
+                onRowClick={(row) => openDetail(row, 'expense')}
+              />
+            </>
+          )}
         </>)}
 
         {/* ── Tab 3: InnBucks Sales ─────────────────────────────────────── */}
@@ -329,7 +374,7 @@ export default function ExecDashboard() {
           />
         </>)}
 
-        {/* ── Tab 4: Supplier Trends ────────────────────────────────────── */}
+        {/* ── Tab 4: Supplier Analytics ────────────────────────────────────── */}
         {tab === 4 && (<>
           <div className="kg c4">
             <div className="kc bl"><div className="kl">Group Supplier Spend (MTD)</div><div className="kv">${filteredSuppliers.reduce((s,t) => s+t.mtd,0).toLocaleString()}</div><div className="kd up">↑ 8% vs last month</div><div className="ki">💳</div></div>
@@ -337,7 +382,7 @@ export default function ExecDashboard() {
             <div className="kc yw"><div className="kl">Active Suppliers</div><div className="kv">{filteredSuppliers.length}</div><div className="kd nt">Matching filters</div><div className="ki">✓</div></div>
             <div className="kc rd"><div className="kl">Cert. Alerts</div><div className="kv">3</div><div className="kd dn">Expiring within 3 months</div><div className="ki">⚠</div></div>
           </div>
-          <div className="tbbar"><div className="tbt">Supplier Trends — Filtered</div></div>
+          <div className="tbbar"><div className="tbt">Supplier Analytics — Filtered</div></div>
           <DataTable
             columns={[
               { label: 'Supplier', key: 'name' },
@@ -358,6 +403,170 @@ export default function ExecDashboard() {
             }))}
             onRowClick={(row) => openDetail(row, 'supplier')}
           />
+        </>)}
+
+        {/* ── Tab 5: Custom Reports ─────────────────────────────────────── */}
+        {tab === 5 && (<>
+          <div style={{ marginBottom: 18 }}>
+            <div className="tbbar" style={{ marginBottom: 10 }}><div className="tbt">Report Builder — Select metrics and grouping</div></div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+              {REPORT_METRICS.map(m => (
+                <button
+                  key={m.id}
+                  className={`ab${reportMetrics.includes(m.id) ? ' pri' : ''}`}
+                  style={{ height: 34, fontSize: 12, gap: 6, display: 'flex', alignItems: 'center' }}
+                  onClick={() => toggleMetric(m.id)}
+                >
+                  <span>{m.icon}</span> {m.label}
+                </button>
+              ))}
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 11, color: 'var(--ts)' }}>Group by:</span>
+                {['brand', 'location', 'shop'].map(g => (
+                  <button
+                    key={g}
+                    className={`ab${reportGroupBy === g ? ' pri' : ''}`}
+                    style={{ height: 28, fontSize: 11, textTransform: 'capitalize' }}
+                    onClick={() => setReportGroupBy(g)}
+                  >{g}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--ts)', marginBottom: 4 }}>
+              Filters above apply · Showing: {reportMetrics.length === 0 ? 'no metrics selected' : reportMetrics.map(id => REPORT_METRICS.find(m => m.id === id)?.label).join(', ')} · Grouped by {reportGroupBy}
+            </div>
+          </div>
+
+          {reportMetrics.length === 0 && (
+            <div style={{ textAlign: 'center', padding: 48, color: 'var(--ts)', fontSize: 13 }}>
+              Select at least one metric above to build your report.
+            </div>
+          )}
+
+          {reportMetrics.includes('budget') && (
+            <div style={{ marginBottom: 20 }}>
+              <div className="tbbar"><div className="tbt">📊 Budget Utilisation — {reportGroupBy === 'shop' ? 'by Shop' : reportGroupBy === 'location' ? 'by Location' : 'by Brand'}</div></div>
+              <DataTable
+                columns={[
+                  { label: reportGroupBy === 'shop' ? 'Shop' : reportGroupBy === 'location' ? 'Location' : 'Brand', key: 'group' },
+                  { label: 'Budget', key: 'budget' },
+                  { label: 'Disbursed', key: 'disbursed' },
+                  { label: '% Used', key: 'pct' },
+                ]}
+                data={(() => {
+                  if (reportGroupBy === 'brand') return filteredBrands.map(b => ({
+                    group: <BrandChip brand={b.brand} />,
+                    budget: `$${b.budget.toLocaleString()}`,
+                    disbursed: `$${b.disbursed.toLocaleString()}`,
+                    pct: <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 600, color: pctColor(pctOf(b.disbursed, b.budget)) }}>{pctOf(b.disbursed, b.budget)}%</span>,
+                  }));
+                  if (reportGroupBy === 'location') {
+                    const locs = [...new Set(filteredBrands.map(b => b.location))];
+                    return locs.map(loc => {
+                      const rows = filteredBrands.filter(b => b.location === loc);
+                      const bud = rows.reduce((s,b) => s+b.budget, 0);
+                      const dis = rows.reduce((s,b) => s+b.disbursed, 0);
+                      return { group: loc, budget: `$${bud.toLocaleString()}`, disbursed: `$${dis.toLocaleString()}`, pct: <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 600, color: pctColor(pctOf(dis, bud)) }}>{pctOf(dis, bud)}%</span> };
+                    });
+                  }
+                  return filteredBrands.map(b => ({
+                    group: <span style={{ fontSize: 12 }}>{b.shop}</span>,
+                    budget: `$${b.budget.toLocaleString()}`,
+                    disbursed: `$${b.disbursed.toLocaleString()}`,
+                    pct: <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 600, color: pctColor(pctOf(b.disbursed, b.budget)) }}>{pctOf(b.disbursed, b.budget)}%</span>,
+                  }));
+                })()}
+              />
+            </div>
+          )}
+
+          {reportMetrics.includes('petty-cash') && (
+            <div style={{ marginBottom: 20 }}>
+              <div className="tbbar"><div className="tbt">💳 Petty Cash Expenses — {reportGroupBy === 'shop' ? 'by Shop' : reportGroupBy === 'location' ? 'by Location' : 'by Brand'}</div></div>
+              <DataTable
+                columns={[
+                  { label: reportGroupBy === 'shop' ? 'Shop' : reportGroupBy === 'location' ? 'Location' : 'Brand', key: 'group' },
+                  { label: 'Expenses', key: 'count' },
+                  { label: 'Total Value', key: 'total', barKey: 'totalRaw' },
+                  { label: 'Top Category', key: 'topCat' },
+                ]}
+                data={(() => {
+                  const groupKey = reportGroupBy === 'shop' ? 'shop' : reportGroupBy === 'location' ? 'location' : 'brand';
+                  const groups = [...new Set(filteredExpenses.map(e => e[groupKey]))];
+                  return groups.map(g => {
+                    const rows = filteredExpenses.filter(e => e[groupKey] === g);
+                    const total = rows.reduce((s,e) => s+e.amt, 0);
+                    const cats = rows.reduce((m,e) => { m[e.cat] = (m[e.cat]||0)+1; return m; }, {});
+                    const topCat = Object.entries(cats).sort((a,b) => b[1]-a[1])[0]?.[0] || '—';
+                    return {
+                      group: groupKey === 'brand' ? <BrandChip brand={g} /> : <span style={{ fontSize: 12 }}>{g}</span>,
+                      count: rows.length,
+                      totalRaw: total,
+                      total: <strong>${total.toLocaleString()}</strong>,
+                      topCat: <span style={{ fontSize: 11, color: 'var(--int)', background: 'var(--info-bg)', padding: '2px 8px', border: '1px solid var(--int)' }}>{topCat}</span>,
+                    };
+                  });
+                })()}
+              />
+            </div>
+          )}
+
+          {reportMetrics.includes('innbucks') && (
+            <div style={{ marginBottom: 20 }}>
+              <div className="tbbar"><div className="tbt">📈 InnBucks Sales — {reportGroupBy === 'shop' ? 'by Shop' : reportGroupBy === 'location' ? 'by Location' : 'by Brand'}</div></div>
+              <DataTable
+                columns={[
+                  { label: reportGroupBy === 'shop' ? 'Shop' : reportGroupBy === 'location' ? 'Location' : 'Brand', key: 'group' },
+                  { label: 'Sales', key: 'sales', barKey: 'salesRaw' },
+                  { label: 'Transactions', key: 'txns' },
+                  { label: 'Avg Basket', key: 'avg' },
+                  { label: 'vs Yesterday', key: 'trend' },
+                ]}
+                data={(() => {
+                  const groupKey = reportGroupBy === 'shop' ? 'shop' : reportGroupBy === 'location' ? 'location' : 'brand';
+                  const groups = [...new Set(filteredInnBucks.filter(b => !b.notLive).map(b => b[groupKey]))];
+                  return groups.map(g => {
+                    const rows = filteredInnBucks.filter(b => !b.notLive && b[groupKey] === g);
+                    const sales = rows.reduce((s,b) => s+b.sales, 0);
+                    const txns = rows.reduce((s,b) => s+b.txns, 0);
+                    const avg = txns > 0 ? sales/txns : 0;
+                    const trend = rows.length === 1 ? rows[0].trend : null;
+                    return {
+                      group: groupKey === 'brand' ? <BrandChip brand={g} /> : <span style={{ fontSize: 12 }}>{g}</span>,
+                      salesRaw: sales,
+                      sales: <strong>${sales.toLocaleString()}</strong>,
+                      txns,
+                      avg: `$${avg.toFixed(2)}`,
+                      trend: <span style={{ color: trendColor(trend), fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{trendLabel(trend)}</span>,
+                    };
+                  });
+                })()}
+              />
+            </div>
+          )}
+
+          {reportMetrics.includes('suppliers') && (
+            <div style={{ marginBottom: 20 }}>
+              <div className="tbbar"><div className="tbt">🏭 Supplier Spend — {reportGroupBy === 'shop' ? 'by Shop' : reportGroupBy === 'location' ? 'by Location' : 'by Brand'}</div></div>
+              <DataTable
+                columns={[
+                  { label: 'Supplier', key: 'name' },
+                  { label: 'MTD Spend', key: 'mtd', barKey: 'mtdRaw' },
+                  { label: 'YTD Spend', key: 'ytd' },
+                  { label: 'Brands', key: 'brands' },
+                  { label: 'MTD Trend', key: 'trend' },
+                ]}
+                data={filteredSuppliers.map(s => ({
+                  name: <strong>{s.name}</strong>,
+                  mtdRaw: s.mtd,
+                  mtd: <strong>${s.mtd.toLocaleString()}</strong>,
+                  ytd: <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>${s.ytd.toLocaleString()}</span>,
+                  brands: s.brands,
+                  trend: <span style={{ color: trendColor(s.trend), fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{trendLabel(s.trend)}</span>,
+                }))}
+              />
+            </div>
+          )}
         </>)}
       </div>
 
@@ -407,7 +616,6 @@ export default function ExecDashboard() {
             { label: 'Remaining', value: `$${(detailItem.budget - detailItem.disbursed).toLocaleString()}` },
             { label: '% Used', value: <span style={{ fontWeight: 700, color: pctColor(pctOf(detailItem.disbursed, detailItem.budget)) }}>{pctOf(detailItem.disbursed, detailItem.budget)}%</span> },
             { label: 'Total Shops', value: detailItem.shops },
-            { label: 'Alerts', value: detailItem.alerts > 0 ? <StatusTag type={detailItem.alertType} label={String(detailItem.alerts)} /> : 'None' },
           ].map((row, i, arr) => (
             <div key={i} className="cvs-detail-row" style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--bs)' : 'none' }}>
               <span className="cvs-detail-label">{row.label}</span>

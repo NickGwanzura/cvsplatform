@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ROLES } from '../../data/mockData';
+import { ProfileModal } from '../modals/AllModals';
 
 export default function AppSideNav() {
   const { session, activeNavIdx, navigate, navOpen, setNavOpen, logout } = useApp();
+  const [showProfile, setShowProfile] = useState(false);
   if (!session) return null;
   const r = ROLES[session.roleKey];
   const initials = session.name.split(' ').map(n => n[0]).join('').slice(0, 2);
@@ -42,8 +45,8 @@ export default function AppSideNav() {
           ))}
         </div>
 
-        {/* Profile section at bottom */}
-        <div className="cvs-nav-profile">
+        {/* Profile section at bottom — clickable to edit profile */}
+        <div className="cvs-nav-profile" style={{ cursor: 'pointer' }} onClick={() => setShowProfile(true)}>
           <div className="cvs-nav-profile-info">
             <div className="cvs-nav-profile-avatar" style={{ background: session.color }}>{initials}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -51,13 +54,14 @@ export default function AppSideNav() {
               <div className="cvs-nav-profile-role">{r.label}</div>
             </div>
           </div>
-          <button className="cvs-nav-logout" onClick={logout} title="Sign out">
+          <button className="cvs-nav-logout" onClick={(e) => { e.stopPropagation(); logout(); }} title="Sign out">
             <svg width="16" height="16" viewBox="0 0 32 32" fill="currentColor">
               <path d="M12 4H4v24h8v-2H6V6h6zm8 18l-1.5-1.5L22 17H10v-2h12l-3.5-3.5L20 10l6 6z" />
             </svg>
           </button>
         </div>
       </nav>
+      <ProfileModal open={showProfile} onClose={() => setShowProfile(false)} />
     </>
   );
 }

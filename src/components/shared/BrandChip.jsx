@@ -1,3 +1,5 @@
+import { useApp } from '../../context/AppContext';
+
 const CLS = {
   'Chicken Inn': 'bci', 'Pizza Inn': 'bcp', 'Creamy Inn': 'bcc',
   "Nando's": 'bcn', 'Steers': 'bcs', "Roco Mamma's": 'bcr',
@@ -9,6 +11,19 @@ const SHORT = {
 };
 
 export default function BrandChip({ brand, short }) {
+  const { brandFilter, setBrandFilter } = useApp();
   const cls = CLS[brand] || 'bci';
-  return <span className={`bc2 ${cls}`}>{short ? (SHORT[brand] || brand) : brand}</span>;
+  const isActive = brandFilter === brand;
+  return (
+    <span
+      className={`bc2 ${cls}`}
+      style={{
+        cursor: 'pointer',
+        outline: isActive ? '2px solid var(--int)' : 'none',
+        outlineOffset: 1,
+      }}
+      title={`Click to filter by ${brand}`}
+      onClick={() => setBrandFilter(isActive ? 'All Brands' : brand)}
+    >{short ? (SHORT[brand] || brand) : brand}</span>
+  );
 }

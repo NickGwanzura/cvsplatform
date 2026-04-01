@@ -202,10 +202,13 @@ export default function AccDashboard() {
           </div>
           <div className="tbbar">
             <div className="tbt">Shop Budget Limits</div>
-            <button className="ab pri" style={{ height: 34, fontSize: 12 }} onClick={() => setShowBudget(true)}>Edit Budgets</button>
+            <button className="ab pri" style={{ height: 34, fontSize: 12, gap: 6, display: 'flex', alignItems: 'center' }} onClick={() => setShowBudget(true)}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+              Edit Budgets
+            </button>
           </div>
           <table className="dt">
-            <thead><tr><th>Shop</th><th>Location</th><th>Monthly Budget</th><th>Disbursed</th><th>Remaining</th><th>% Used</th><th>80% Threshold</th><th>90% Alert</th><th>Status</th></tr></thead>
+            <thead><tr><th>Shop</th><th>Location</th><th>Monthly Budget</th><th>Disbursed</th><th>Remaining</th><th>% Used</th><th>80% Threshold</th><th>Status</th></tr></thead>
             <tbody>
               {SHOPS.map(s => (
                 <tr key={s.id}>
@@ -223,7 +226,6 @@ export default function AccDashboard() {
                     </div>
                   </td>
                   <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--ts)' }}>${(s.budget * 0.8).toFixed(0)}</td>
-                  <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--ts)' }}>${(s.budget * 0.9).toFixed(0)}</td>
                   <td><StatusTag type={s.status} /></td>
                 </tr>
               ))}
