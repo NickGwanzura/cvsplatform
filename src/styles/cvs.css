@@ -214,7 +214,7 @@ input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--int); curs
 /* ── Login screen ────────────────────────────────────────────────────────── */
 .lg-wrap { position: fixed; inset: 0; z-index: 900; display: flex; transition: opacity .3s; }
 .lg-wrap.out { opacity: 0; pointer-events: none; }
-.lg-l { width: 380px; flex-shrink: 0; background: #161616; display: flex; flex-direction: column; justify-content: space-between; padding: 44px 38px; border-right: 1px solid #262626; }
+.lg-l { width: 50%; flex-shrink: 0; background: #161616; display: flex; flex-direction: column; justify-content: center; padding: 44px 60px; border-right: 1px solid #262626; }
 .lg-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 36px; }
 .lg-sq { width: 36px; height: 36px; background: var(--int); display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 13px; color: #fff; }
 .lg-nm { font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 18px; color: #f4f4f4; }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { ROLES, DEMO_USERS, BRANDS } from '../../data/mockData';
+import { ROLES, DEMO_USERS } from '../../data/mockData';
 
 export default function LoginPage() {
   const { session, login } = useApp();
@@ -39,14 +39,7 @@ export default function LoginPage() {
             IBM Carbon Design System.
           </div>
         </div>
-        <div>
-          <div style={{ fontSize: 10, color: '#6f6f6f', fontFamily: "'IBM Plex Mono',monospace", textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>
-            9 Brands on Platform
-          </div>
-          <div className="lg-badges">
-            {BRANDS.map(b => <span className="lb" key={b}>{b}</span>)}
-          </div>
-        </div>
+
       </div>
 
       <div className="lg-r">

@@ -15,6 +15,8 @@ export function AppProvider({ children }) {
   const [batchSelected, setBatchSelected] = useState([]);
   const [navOpen, setNavOpen] = useState(false);
   const [brandFilter, setBrandFilter] = useState('All Brands');
+  const [currency, setCurrency] = useState('USD');
+  const toggleCurrency = useCallback(() => setCurrency(c => c === 'USD' ? 'ZWL' : 'USD'), []);
 
   const login = useCallback((roleKey, roleData) => {
     setSession({ roleKey, ...roleData });
@@ -63,6 +65,7 @@ export function AppProvider({ children }) {
       batchSelected, setBatchSelected,
       navOpen, setNavOpen,
       brandFilter, setBrandFilter,
+      currency, setCurrency, toggleCurrency,
     }}>
       {children}
     </AppContext.Provider>

@@ -2,7 +2,7 @@ import { useApp } from '../../context/AppContext';
 import { ROLES } from '../../data/mockData';
 
 export default function AppHeader() {
-  const { session, headerTitle, openModal, navOpen, setNavOpen } = useApp();
+  const { session, headerTitle, openModal, navOpen, setNavOpen, currency, toggleCurrency } = useApp();
   if (!session) return null;
   const r = ROLES[session.roleKey];
 
@@ -28,6 +28,22 @@ export default function AppHeader() {
       <div className="cvs-header-divider" />
       <div className="cvs-header-title">{headerTitle}</div>
       <div style={{ flex: 1 }} />
+
+      {/* Currency toggle */}
+      <button
+        onClick={toggleCurrency}
+        title={`Switch to ${currency === 'USD' ? 'ZWL' : 'USD'}`}
+        style={{
+          height: 30, padding: '0 10px', border: '1px solid var(--bs)', borderRadius: 4,
+          background: 'var(--l2)', cursor: 'pointer', fontSize: 11, fontWeight: 700,
+          fontFamily: "'IBM Plex Mono',monospace", color: currency === 'USD' ? 'var(--ok-t)' : 'var(--wa-t)',
+          display: 'flex', alignItems: 'center', gap: 4, transition: 'all .15s',
+        }}
+      >
+        {currency === 'USD' ? 'USD' : 'ZWL'}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+      </button>
+      <div className="cvs-header-divider" />
       <button
         className="cvs-notif-btn"
         onClick={() => openModal('notifM')}

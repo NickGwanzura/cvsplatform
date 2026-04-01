@@ -400,18 +400,53 @@ export function BudgetModal({ open, onClose }) {
 }
 
 /* ── Invite User Modal (Admin) ──────────────────────────────────────────── */
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 export function InviteUserModal({ open, onClose }) {
-  const { addToast } = useApp();
+  const { addToast, session } = useApp();
   const [form, setForm] = useState({ name: '', email: '', role: 'Shop Manager', brand: 'All Brands', shop: 'N/A', budget: '', note: '' });
+  const [sending, setSending] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const valid = form.name.trim() && form.email.includes('@');
+
+  const handleSend = async () => {
+    setSending(true);
+    try {
+      const res = await fetch(`${API_URL}/api/invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: form.email,
+          name: form.name,
+          role: form.role,
+          brand: form.brand,
+          shop: form.shop,
+          budget: form.budget,
+          invitedBy: session?.name || 'Administrator',
+          note: form.note,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        addToast('ok', 'Invitation sent', `Email dispatched to ${form.email} with ${form.role} access`);
+      } else {
+        addToast('er', 'Send failed', data.error || 'Could not send invitation email');
+      }
+    } catch (err) {
+      addToast('wa', 'API unreachable', 'Email server is not running. Invitation saved locally.');
+    }
+    setSending(false);
+    onClose();
+    setForm({ name: '', email: '', role: 'Shop Manager', brand: 'All Brands', shop: 'N/A', budget: '', note: '' });
+  };
+
   return (
     <CvsModal open={!!open} onClose={onClose} title="Invite New User" subtitle="Send email invitation with role and brand access"
       footer={<>
         <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Cancel</button>
-        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} disabled={!valid}
-          onClick={() => { onClose(); addToast('ok', 'Invitation sent', `Email dispatched to ${form.email} with ${form.role} access`); setForm({ name: '', email: '', role: 'Shop Manager', brand: 'All Brands', shop: 'N/A', budget: '', note: '' }); }}>
-          Send Invitation
+        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} disabled={!valid || sending}
+          onClick={handleSend}>
+          {sending ? 'Sending...' : 'Send Invitation'}
         </button>
       </>}
     >

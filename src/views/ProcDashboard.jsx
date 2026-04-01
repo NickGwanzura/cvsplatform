@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { formatMoney, formatMoneyShort, convert } from '../lib/currency';
 import StatusTag from '../components/shared/StatusTag';
 import BrandChip from '../components/shared/BrandChip';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
@@ -50,7 +51,10 @@ const trendColor = (t) => t > 0 ? 'var(--ok)' : t < 0 ? 'var(--er)' : 'var(--ts)
 const trendLabel = (t) => t === null ? '—' : t === 0 ? '0%' : `${t > 0 ? '↑' : '↓'} ${Math.abs(t)}%`;
 
 export default function ProcDashboard() {
-  const { addToast, activeTab, brandFilter, setBrandFilter } = useApp();
+  const { addToast, activeTab, brandFilter, setBrandFilter, currency } = useApp();
+  const hardcodedSpendMTD = 18420;
+  const hardcodedTopCategorySpend = 6840;
+  const hardcodedTopSupplierSpend = 3120;
   const [tab, setTab] = useState(activeTab ?? 0);
   useEffect(() => { setTab(activeTab ?? 0); }, [activeTab]);
   const [catFilter, setCatFilter] = useState('All');
@@ -119,7 +123,7 @@ export default function ProcDashboard() {
         {/* ── Tab 0: Overview ──────────────────────────────────────────── */}
         {tab === 0 && (<>
           <div className="kg c4">
-            <div className="kc bl"><div className="kl">Total Supplier Spend (MTD)</div><div className="kv">$18,420</div><div className="kd up">↑ 8% vs Feb</div><div className="ki">💳</div></div>
+            <div className="kc bl"><div className="kl">Total Supplier Spend (MTD)</div><div className="kv">{formatMoneyShort(hardcodedSpendMTD, currency)}</div><div className="kd up">↑ 8% vs Feb</div><div className="ki">💳</div></div>
             <div className="kc gn"><div className="kl">Active Suppliers</div><div className="kv">{SUPPLIERS.filter(s => s.verified).length}</div><div className="kd nt">{SUPPLIERS.filter(s => !s.verified).length} pending verification</div><div className="ki">✓</div></div>
             <div className="kc yw"><div className="kl">Products on File</div><div className="kv">{PRODUCTS_DATA.length}</div><div className="kd nt">Across {uniqueDepts.length - 1} departments</div><div className="ki">📦</div></div>
             <div className="kc rd"><div className="kl">Pending Statements</div><div className="kv">{SUPPLIER_STATEMENTS.filter(s => s.status !== 'SETTLED').length}</div><div className="kd dn">Requires attention</div><div className="ki">⚠</div></div>
@@ -135,7 +139,7 @@ export default function ProcDashboard() {
                     <tr key={s.name} style={{ cursor: 'pointer' }} onClick={() => { setSupplierProfile(s); setTab(1); }}>
                       <td><strong>{s.name}</strong></td>
                       <td style={{ fontSize: 12, color: 'var(--ts)' }}>{s.cat}</td>
-                      <td><strong>${s.spend.toLocaleString()}</strong></td>
+                      <td><strong>{formatMoneyShort(s.spend, currency)}</strong></td>
                       <td>{s.brands.map(([b, cls], i) => <span key={i} className={`bc2 ${cls}`} style={{ marginRight: 2, fontSize: 9 }}>{b.split(' ')[0] === 'Chicken' ? 'CI' : b.split(' ')[0] === 'Pizza' ? 'PI' : b.split(' ')[0] === 'Creamy' ? 'CR' : b === 'Steers' ? 'ST' : b[0]}</span>)}</td>
                       <td style={{ color: trendColor(s.trend), fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{trendLabel(s.trend)}</td>
                     </tr>
@@ -152,7 +156,7 @@ export default function ProcDashboard() {
                     <tr key={p.name}>
                       <td><strong>{p.name}</strong></td>
                       <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{p.qty}</td>
-                      <td><strong>${p.val.toLocaleString()}</strong></td>
+                      <td><strong>{formatMoneyShort(p.val, currency)}</strong></td>
                       <td style={{ color: trendColor(p.trend), fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{trendLabel(p.trend)}</td>
                     </tr>
                   ))}
@@ -184,7 +188,7 @@ export default function ProcDashboard() {
                     <td><BrandChip brand={r.brand} /></td>
                     <td>{r.shop}</td>
                     <td>{r.loc}</td>
-                    <td><strong>${r.val.toLocaleString()}</strong></td>
+                    <td><strong>{formatMoneyShort(r.val, currency)}</strong></td>
                     <td>{r.qty}</td>
                     <td style={{ fontSize: 12, color: 'var(--ts)' }}>{r.last}</td>
                   </tr>
@@ -236,7 +240,7 @@ export default function ProcDashboard() {
                       <td><code style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--int)' }}>{p.code}</code></td>
                       <td><strong>{p.name}</strong></td>
                       <td style={{ fontSize: 12, color: 'var(--ts)' }}>{p.cat}</td>
-                      <td><strong>${p.price.toFixed(2)}</strong></td>
+                      <td><strong>{formatMoney(p.price, currency)}</strong></td>
                       <td style={{ fontSize: 12, color: 'var(--ts)' }}>{p.unit}</td>
                       <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{p.minOrder}</td>
                       <td style={{ fontSize: 11, color: 'var(--ts)' }}>{p.brands}</td>
@@ -263,7 +267,7 @@ export default function ProcDashboard() {
                       <td style={{ fontSize: 12, color: 'var(--ts)' }}>{s.cat}</td>
                       <td style={{ fontSize: 12 }}>{s.dept}</td>
                       <td style={{ fontSize: 12, color: 'var(--ts)' }}>{s.contact}</td>
-                      <td><strong>${s.spend.toLocaleString()}</strong></td>
+                      <td><strong>{formatMoneyShort(s.spend, currency)}</strong></td>
                       <td>{s.brands.map(([b, cls], i) => <span key={i} className={`bc2 ${cls}`} style={{ marginRight: 2, fontSize: 9 }}>{b[0]}{b.split(' ')[1]?.[0]||''}</span>)}</td>
                       <td>{s.verified ? <StatusTag type="active" label="VERIFIED" /> : <StatusTag type="pending" label="PENDING" />}</td>
                       <td style={{ fontSize: 11, fontFamily: "'IBM Plex Mono',monospace", color: s.cert && new Date(s.cert) < new Date('2025-07-01') ? 'var(--er-t)' : 'var(--ts)' }}>{s.cert || '—'}</td>
@@ -306,7 +310,7 @@ export default function ProcDashboard() {
                     <td><span style={{ fontSize: 11, fontWeight: 600, color: 'var(--int)', background: 'var(--info-bg)', padding: '2px 8px', border: '1px solid var(--int)' }}>{p.cat}</span></td>
                     <td style={{ fontSize: 12, color: 'var(--ts)' }}>{p.dept}</td>
                     <td style={{ fontSize: 12 }}>{p.supplier}</td>
-                    <td><strong style={{ fontFamily: "'IBM Plex Mono',monospace" }}>${p.price.toFixed(2)}</strong></td>
+                    <td><strong style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{formatMoney(p.price, currency)}</strong></td>
                     <td style={{ fontSize: 12, color: 'var(--ts)' }}>{p.unit}</td>
                     <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{p.minOrder}</td>
                     <td style={{ fontSize: 11, color: 'var(--ts)' }}>{p.brands}</td>
@@ -320,8 +324,8 @@ export default function ProcDashboard() {
         {/* ── Tab 3: Analytics ────────────────────────────────────────────── */}
         {tab === 3 && (<>
           <div className="kg c3">
-            <div className="kc bl"><div className="kl">Total Spend (MTD)</div><div className="kv">$18,420</div><div className="kd up">↑ 8% vs Feb</div><div className="ki">💳</div></div>
-            <div className="kc gn"><div className="kl">Top {analyticsMode === 'product' ? 'Category' : 'Supplier'}</div><div className="kv" style={{ fontSize: 16 }}>{analyticsMode === 'product' ? 'Maintenance' : 'Swift Maintenance'}</div><div className="kd nt">{analyticsMode === 'product' ? '$6,840 — 37%' : '$3,120 MTD'}</div><div className="ki">{analyticsMode === 'product' ? '🔧' : '🏭'}</div></div>
+            <div className="kc bl"><div className="kl">Total Spend (MTD)</div><div className="kv">{formatMoneyShort(hardcodedSpendMTD, currency)}</div><div className="kd up">↑ 8% vs Feb</div><div className="ki">💳</div></div>
+            <div className="kc gn"><div className="kl">Top {analyticsMode === 'product' ? 'Category' : 'Supplier'}</div><div className="kv" style={{ fontSize: 16 }}>{analyticsMode === 'product' ? 'Maintenance' : 'Swift Maintenance'}</div><div className="kd nt">{analyticsMode === 'product' ? `${formatMoneyShort(hardcodedTopCategorySpend, currency)} — 37%` : `${formatMoneyShort(hardcodedTopSupplierSpend, currency)} MTD`}</div><div className="ki">{analyticsMode === 'product' ? '🔧' : '🏭'}</div></div>
             <div className="kc yw"><div className="kl">Trend Direction</div><div className="kv">↑ 8%</div><div className="kd nt">Overall positive</div><div className="ki">📈</div></div>
           </div>
 
@@ -368,8 +372,8 @@ export default function ProcDashboard() {
                   <tr key={s.name}>
                     <td><strong>{s.name}</strong></td>
                     <td style={{ fontSize: 12, color: 'var(--ts)' }}>{s.cat}</td>
-                    <td><strong>${s.spend.toLocaleString()}</strong></td>
-                    <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>${s.ytd.toLocaleString()}</td>
+                    <td><strong>{formatMoneyShort(s.spend, currency)}</strong></td>
+                    <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{formatMoneyShort(s.ytd, currency)}</td>
                     <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{s.txns}</td>
                     <td>{s.brands.map(([b, cls], i) => <span key={i} className={`bc2 ${cls}`} style={{ marginRight: 2, fontSize: 9 }}>{b[0]}{b.split(' ')[1]?.[0]||''}</span>)}</td>
                     <td style={{ color: trendColor(s.trend), fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{trendLabel(s.trend)}</td>
@@ -473,7 +477,7 @@ export default function ProcDashboard() {
                     {s.cert || '—'}
                     {s.cert && new Date(s.cert) < new Date('2025-07-01') && <span style={{ color: 'var(--er)', marginLeft: 4 }}>⚠</span>}
                   </td>
-                  <td><strong>${s.spend.toLocaleString()}</strong></td>
+                  <td><strong>{formatMoneyShort(s.spend, currency)}</strong></td>
                   <td>{s.brands.map(([b, cls], i) => <span key={i} className={`bc2 ${cls}`} style={{ marginRight: 2, fontSize: 9 }}>{b[0]}{b.split(' ')[1]?.[0]||''}</span>)}</td>
                   <td>
                     <div className="ra">

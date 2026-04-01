@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { formatMoney, formatMoneyShort, convert } from '../lib/currency';
 import BrandChip from '../components/shared/BrandChip';
 import StatusTag from '../components/shared/StatusTag';
 import CvsModal from '../components/modals/CvsModal';
@@ -57,7 +58,7 @@ const trendColor = (t) => t > 0 ? 'var(--ok)' : t < 0 ? 'var(--er)' : 'var(--ts)
 const trendLabel = (t) => t === null ? '—' : t === 0 ? '0%' : `${t > 0 ? '↑' : '↓'} ${Math.abs(t)}%`;
 
 export default function ExecDashboard() {
-  const { activeTab, brandFilter, setBrandFilter } = useApp();
+  const { activeTab, brandFilter, setBrandFilter, currency } = useApp();
   const [tab, setTab] = useState(activeTab ?? 0);
   useEffect(() => { setTab(activeTab ?? 0); }, [activeTab]);
 
@@ -141,7 +142,7 @@ export default function ExecDashboard() {
           { label: 'Overview' },
         ]} />
         <div className="pt">Executive Dashboard — Simbisa Group</div>
-        <div className="pd">Group-wide petty cash, InnBucks sales and supplier intelligence</div>
+        <div className="pd">Group-wide petty cash, InnBucks sales and supplier intelligence · Dual currency: USD / ZWL</div>
         <div className="ptabs">
           {tabs.map((t, i) => (
             <button key={t} className={`ptab${tab === i ? ' on' : ''}`} onClick={() => setTab(i)}>{t}</button>
@@ -154,9 +155,9 @@ export default function ExecDashboard() {
         {/* ── Tab 0: Group Overview ─────────────────────────────────────── */}
         {tab === 0 && (<>
           <div className="kg c4">
-            <div className="kc bl"><div className="kl">Total Petty Cash Disbursed (MTD)</div><div className="kv">${totalDisbursed.toLocaleString()}</div><div className="kd up">↑ 8% vs February</div><div className="ki">💳</div></div>
-            <div className="kc gn"><div className="kl">InnBucks Sales — All Brands</div><div className="kv">${totalSales.toLocaleString()}</div><div className="kd up">↑ Today's total</div><div className="ki">📈</div></div>
-            <div className="kc yw"><div className="kl">Total Budget (MTD)</div><div className="kv">${totalBudget.toLocaleString()}</div><div className="kd nt">{totalBudget > 0 ? pctOf(totalDisbursed, totalBudget) : 0}% utilised</div><div className="ki">📊</div></div>
+            <div className="kc bl"><div className="kl">Total Petty Cash Disbursed (MTD)</div><div className="kv">{formatMoneyShort(totalDisbursed, currency)}</div><div className="kd up">↑ 8% vs February</div><div className="ki">💳</div></div>
+            <div className="kc gn"><div className="kl">InnBucks Sales — All Brands</div><div className="kv">{formatMoneyShort(totalSales, currency)}</div><div className="kd up">↑ Today's total</div><div className="ki">📈</div></div>
+            <div className="kc yw"><div className="kl">Total Budget (MTD)</div><div className="kv">{formatMoneyShort(totalBudget, currency)}</div><div className="kd nt">{totalBudget > 0 ? pctOf(totalDisbursed, totalBudget) : 0}% utilised</div><div className="ki">📊</div></div>
             <div className="kc rd"><div className="kl">Threshold Alerts</div><div className="kv">{filteredBrands.reduce((s,b) => s+b.alerts,0)}</div><div className="kd dn">Shops over 80% limit</div><div className="ki">🚨</div></div>
           </div>
 
@@ -173,8 +174,8 @@ export default function ExecDashboard() {
                 data={filteredBrands.map(b => ({
                   ...b,
                   brand: <BrandChip brand={b.brand} />,
-                  budget: `$${b.budget.toLocaleString()}`,
-                  disbursed: `$${b.disbursed.toLocaleString()}`,
+                  budget: formatMoneyShort(b.budget, currency),
+                  disbursed: formatMoneyShort(b.disbursed, currency),
                   pct: <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 600, color: pctColor(pctOf(b.disbursed, b.budget)) }}>{pctOf(b.disbursed, b.budget)}%</span>,
                 }))}
                 onRowClick={(row) => openDetail(filteredBrands.find(b => b.brand === (typeof row.brand === 'string' ? row.brand : '')) || row, 'brand-expenditure')}
@@ -195,9 +196,9 @@ export default function ExecDashboard() {
                   ...b,
                   brand: <BrandChip brand={b.brand} />,
                   salesRaw: b.sales || 0,
-                  sales: b.notLive ? <strong>—</strong> : <strong>${b.sales.toLocaleString()}</strong>,
+                  sales: b.notLive ? <strong>—</strong> : <strong>{formatMoneyShort(b.sales, currency)}</strong>,
                   txns: b.notLive ? 'Not live' : b.txns,
-                  avg: b.avg ? `$${b.avg.toFixed(2)}` : '—',
+                  avg: b.avg ? formatMoney(b.avg, currency) : '—',
                   trend: <span style={{ color: trendColor(b.trend), fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{trendLabel(b.trend)}</span>,
                 }))}
                 onRowClick={(row) => !row.notLive && openDetail(row, 'innbucks')}
@@ -216,8 +217,8 @@ export default function ExecDashboard() {
                   ...s,
                   name: <strong>{s.name}</strong>,
                   mtdRaw: s.mtd,
-                  mtd: <strong>${s.mtd.toLocaleString()}</strong>,
-                  ytd: <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>${s.ytd.toLocaleString()}</span>,
+                  mtd: <strong>{formatMoneyShort(s.mtd, currency)}</strong>,
+                  ytd: <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{formatMoneyShort(s.ytd, currency)}</span>,
                   trend: <span style={{ color: trendColor(s.trend), fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{trendLabel(s.trend)}</span>,
                 }))}
                 onRowClick={(row) => openDetail(row, 'supplier')}
@@ -250,7 +251,7 @@ export default function ExecDashboard() {
                     </div>
                   </div>
                   <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 700, fontSize: 13, color, width: 40, textAlign: 'right' }}>{pct}%</span>
-                  <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--ts)', width: 150, textAlign: 'right' }}>${b.disbursed.toLocaleString()} of ${b.budget.toLocaleString()}</span>
+                  <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--ts)', width: 150, textAlign: 'right' }}>{formatMoneyShort(b.disbursed, currency)} of {formatMoneyShort(b.budget, currency)}</span>
                   <div style={{ width: 60, textAlign: 'right', fontSize: 11, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace" }}>{b.shops} shops</div>
                 </div>
               );
@@ -266,7 +267,7 @@ export default function ExecDashboard() {
         {tab === 2 && (<>
           <div className="kg c4">
             <div className="kc bl"><div className="kl">Total Expenses</div><div className="kv">{filteredExpenses.length}</div><div className="kd nt">Filtered results</div><div className="ki">💳</div></div>
-            <div className="kc gn"><div className="kl">Total Value</div><div className="kv">${filteredExpenses.reduce((s,e) => s+e.amt, 0).toLocaleString()}</div><div className="kd nt">Sum of all expenses</div><div className="ki">📊</div></div>
+            <div className="kc gn"><div className="kl">Total Value</div><div className="kv">{formatMoneyShort(filteredExpenses.reduce((s,e) => s+e.amt, 0), currency)}</div><div className="kd nt">Sum of all expenses</div><div className="ki">📊</div></div>
             <div className="kc yw"><div className="kl">Pending</div><div className="kv">{filteredExpenses.filter(e => ['review','over'].includes(e.status)).length}</div><div className="kd nt">Awaiting action</div><div className="ki">⏳</div></div>
             <div className="kc rd"><div className="kl">Exceptions</div><div className="kv">{filteredExpenses.filter(e => e.status === 'over').length}</div><div className="kd dn">Over budget</div><div className="ki">🚨</div></div>
           </div>
@@ -298,7 +299,7 @@ export default function ExecDashboard() {
                   shop: <span style={{ fontSize: 12, fontWeight: 600 }}>{e.shop}</span>,
                   location: <span style={{ fontSize: 11, color: 'var(--ts)' }}>{e.location}</span>,
                   amtRaw: e.amt,
-                  amt: <strong>${e.amt}</strong>,
+                  amt: <strong>{formatMoney(e.amt, currency)}</strong>,
                   status: <StatusTag type={e.status} />,
                 }))}
                 onRowClick={(row) => openDetail(row, 'expense')}
@@ -331,7 +332,7 @@ export default function ExecDashboard() {
                     >{e.cat}</span>
                   ),
                   amtRaw: e.amt,
-                  amt: <strong>${e.amt}</strong>,
+                  amt: <strong>{formatMoney(e.amt, currency)}</strong>,
                   status: <StatusTag type={e.status} />,
                 }))}
                 onRowClick={(row) => openDetail(row, 'expense')}
@@ -343,9 +344,9 @@ export default function ExecDashboard() {
         {/* ── Tab 3: InnBucks Sales ─────────────────────────────────────── */}
         {tab === 3 && (<>
           <div className="kg c4">
-            <div className="kc gn"><div className="kl">Total Sales Today</div><div className="kv">${totalSales.toLocaleString()}</div><div className="kd up">↑ 4.2% vs yesterday</div><div className="ki">📈</div></div>
+            <div className="kc gn"><div className="kl">Total Sales Today</div><div className="kv">{formatMoneyShort(totalSales, currency)}</div><div className="kd up">↑ 4.2% vs yesterday</div><div className="ki">📈</div></div>
             <div className="kc bl"><div className="kl">Total Transactions</div><div className="kv">{totalTxns}</div><div className="kd up">Settled today</div><div className="ki">✓</div></div>
-            <div className="kc yw"><div className="kl">Avg Basket Size</div><div className="kv">${totalTxns > 0 ? (totalSales/totalTxns).toFixed(2) : '0.00'}</div><div className="kd nt">Per transaction</div><div className="ki">💳</div></div>
+            <div className="kc yw"><div className="kl">Avg Basket Size</div><div className="kv">{totalTxns > 0 ? formatMoney(totalSales/totalTxns, currency) : formatMoney(0, currency)}</div><div className="kd nt">Per transaction</div><div className="ki">💳</div></div>
             <div className="kc rd"><div className="kl">Brands Not Live</div><div className="kv">{filteredInnBucks.filter(b=>b.notLive).length}</div><div className="kd dn">Pending InnBucks setup</div><div className="ki">⚠</div></div>
           </div>
           <div className="tbbar"><div className="tbt">InnBucks Sales — Filtered Brands</div></div>
@@ -364,9 +365,9 @@ export default function ExecDashboard() {
               brand: <BrandChip brand={b.brand} />,
               shop: <span style={{ fontSize: 12, color: 'var(--ts)' }}>{b.shop}</span>,
               salesRaw: b.sales || 0,
-              sales: b.notLive ? <strong>—</strong> : <strong>${b.sales.toLocaleString()}</strong>,
+              sales: b.notLive ? <strong>—</strong> : <strong>{formatMoneyShort(b.sales, currency)}</strong>,
               txns: b.notLive ? 'Not live' : b.txns,
-              avg: b.avg ? `$${b.avg.toFixed(2)}` : '—',
+              avg: b.avg ? formatMoney(b.avg, currency) : '—',
               trend: <span style={{ color: trendColor(b.trend), fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{trendLabel(b.trend)}</span>,
               statusTag: b.notLive ? <StatusTag type="pending" label="NOT LIVE" /> : <StatusTag type="settled" label="LIVE" />,
             }))}
@@ -377,8 +378,8 @@ export default function ExecDashboard() {
         {/* ── Tab 4: Supplier Analytics ────────────────────────────────────── */}
         {tab === 4 && (<>
           <div className="kg c4">
-            <div className="kc bl"><div className="kl">Group Supplier Spend (MTD)</div><div className="kv">${filteredSuppliers.reduce((s,t) => s+t.mtd,0).toLocaleString()}</div><div className="kd up">↑ 8% vs last month</div><div className="ki">💳</div></div>
-            <div className="kc gn"><div className="kl">Group Supplier Spend (YTD)</div><div className="kv">${filteredSuppliers.reduce((s,t) => s+t.ytd,0).toLocaleString()}</div><div className="kd nt">Across filtered brands</div><div className="ki">📊</div></div>
+            <div className="kc bl"><div className="kl">Group Supplier Spend (MTD)</div><div className="kv">{formatMoneyShort(filteredSuppliers.reduce((s,t) => s+t.mtd,0), currency)}</div><div className="kd up">↑ 8% vs last month</div><div className="ki">💳</div></div>
+            <div className="kc gn"><div className="kl">Group Supplier Spend (YTD)</div><div className="kv">{formatMoneyShort(filteredSuppliers.reduce((s,t) => s+t.ytd,0), currency)}</div><div className="kd nt">Across filtered brands</div><div className="ki">📊</div></div>
             <div className="kc yw"><div className="kl">Active Suppliers</div><div className="kv">{filteredSuppliers.length}</div><div className="kd nt">Matching filters</div><div className="ki">✓</div></div>
             <div className="kc rd"><div className="kl">Cert. Alerts</div><div className="kv">3</div><div className="kd dn">Expiring within 3 months</div><div className="ki">⚠</div></div>
           </div>
@@ -397,8 +398,8 @@ export default function ExecDashboard() {
               name: <strong>{s.name}</strong>,
               shop: <span style={{ fontSize: 12, color: 'var(--ts)' }}>{s.shop}</span>,
               mtdRaw: s.mtd,
-              mtd: <strong>${s.mtd.toLocaleString()}</strong>,
-              ytd: <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>${s.ytd.toLocaleString()}</span>,
+              mtd: <strong>{formatMoneyShort(s.mtd, currency)}</strong>,
+              ytd: <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{formatMoneyShort(s.ytd, currency)}</span>,
               trend: <span style={{ color: trendColor(s.trend), fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{trendLabel(s.trend)}</span>,
             }))}
             onRowClick={(row) => openDetail(row, 'supplier')}
@@ -456,8 +457,8 @@ export default function ExecDashboard() {
                 data={(() => {
                   if (reportGroupBy === 'brand') return filteredBrands.map(b => ({
                     group: <BrandChip brand={b.brand} />,
-                    budget: `$${b.budget.toLocaleString()}`,
-                    disbursed: `$${b.disbursed.toLocaleString()}`,
+                    budget: formatMoneyShort(b.budget, currency),
+                    disbursed: formatMoneyShort(b.disbursed, currency),
                     pct: <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 600, color: pctColor(pctOf(b.disbursed, b.budget)) }}>{pctOf(b.disbursed, b.budget)}%</span>,
                   }));
                   if (reportGroupBy === 'location') {
@@ -466,13 +467,13 @@ export default function ExecDashboard() {
                       const rows = filteredBrands.filter(b => b.location === loc);
                       const bud = rows.reduce((s,b) => s+b.budget, 0);
                       const dis = rows.reduce((s,b) => s+b.disbursed, 0);
-                      return { group: loc, budget: `$${bud.toLocaleString()}`, disbursed: `$${dis.toLocaleString()}`, pct: <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 600, color: pctColor(pctOf(dis, bud)) }}>{pctOf(dis, bud)}%</span> };
+                      return { group: loc, budget: formatMoneyShort(bud, currency), disbursed: formatMoneyShort(dis, currency), pct: <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 600, color: pctColor(pctOf(dis, bud)) }}>{pctOf(dis, bud)}%</span> };
                     });
                   }
                   return filteredBrands.map(b => ({
                     group: <span style={{ fontSize: 12 }}>{b.shop}</span>,
-                    budget: `$${b.budget.toLocaleString()}`,
-                    disbursed: `$${b.disbursed.toLocaleString()}`,
+                    budget: formatMoneyShort(b.budget, currency),
+                    disbursed: formatMoneyShort(b.disbursed, currency),
                     pct: <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 600, color: pctColor(pctOf(b.disbursed, b.budget)) }}>{pctOf(b.disbursed, b.budget)}%</span>,
                   }));
                 })()}
@@ -502,7 +503,7 @@ export default function ExecDashboard() {
                       group: groupKey === 'brand' ? <BrandChip brand={g} /> : <span style={{ fontSize: 12 }}>{g}</span>,
                       count: rows.length,
                       totalRaw: total,
-                      total: <strong>${total.toLocaleString()}</strong>,
+                      total: <strong>{formatMoneyShort(total, currency)}</strong>,
                       topCat: <span style={{ fontSize: 11, color: 'var(--int)', background: 'var(--info-bg)', padding: '2px 8px', border: '1px solid var(--int)' }}>{topCat}</span>,
                     };
                   });
@@ -534,9 +535,9 @@ export default function ExecDashboard() {
                     return {
                       group: groupKey === 'brand' ? <BrandChip brand={g} /> : <span style={{ fontSize: 12 }}>{g}</span>,
                       salesRaw: sales,
-                      sales: <strong>${sales.toLocaleString()}</strong>,
+                      sales: <strong>{formatMoneyShort(sales, currency)}</strong>,
                       txns,
-                      avg: `$${avg.toFixed(2)}`,
+                      avg: formatMoney(avg, currency),
                       trend: <span style={{ color: trendColor(trend), fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{trendLabel(trend)}</span>,
                     };
                   });
@@ -559,8 +560,8 @@ export default function ExecDashboard() {
                 data={filteredSuppliers.map(s => ({
                   name: <strong>{s.name}</strong>,
                   mtdRaw: s.mtd,
-                  mtd: <strong>${s.mtd.toLocaleString()}</strong>,
-                  ytd: <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>${s.ytd.toLocaleString()}</span>,
+                  mtd: <strong>{formatMoneyShort(s.mtd, currency)}</strong>,
+                  ytd: <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{formatMoneyShort(s.ytd, currency)}</span>,
                   brands: s.brands,
                   trend: <span style={{ color: trendColor(s.trend), fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{trendLabel(s.trend)}</span>,
                 }))}
@@ -587,7 +588,7 @@ export default function ExecDashboard() {
             { label: 'Category', value: detailItem.cat },
             { label: 'Supplier', value: detailItem.supplier },
             { label: 'Manager', value: detailItem.mgr },
-            { label: 'Amount', value: <span style={{ fontWeight: 700, color: 'var(--int)', fontSize: 18, fontFamily: "'IBM Plex Sans Condensed',sans-serif" }}>${detailItem.amt}.00</span> },
+            { label: 'Amount', value: <span style={{ fontWeight: 700, color: 'var(--int)', fontSize: 18, fontFamily: "'IBM Plex Sans Condensed',sans-serif" }}>{formatMoney(detailItem.amt, currency)}</span> },
             { label: 'Status', value: <StatusTag type={detailItem.status} /> },
             ...(detailItem.wallet ? [{ label: 'InnBucks Wallet', value: <code style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{detailItem.wallet}</code> }] : []),
             ...(detailItem.txn ? [{ label: 'Transaction Ref', value: <code style={{ color: 'var(--ok-t)', fontFamily: "'IBM Plex Mono',monospace" }}>{detailItem.txn}</code> }] : []),
@@ -611,9 +612,9 @@ export default function ExecDashboard() {
             { label: 'Brand', value: <BrandChip brand={detailItem.brand} /> },
             { label: 'Shop', value: detailItem.shop },
             { label: 'Location', value: detailItem.location },
-            { label: 'Monthly Budget', value: <span style={{ fontWeight: 700, color: 'var(--int)', fontSize: 16 }}>${detailItem.budget?.toLocaleString()}</span> },
-            { label: 'Disbursed', value: <span style={{ fontWeight: 600 }}>${detailItem.disbursed?.toLocaleString()}</span> },
-            { label: 'Remaining', value: `$${(detailItem.budget - detailItem.disbursed).toLocaleString()}` },
+            { label: 'Monthly Budget', value: <span style={{ fontWeight: 700, color: 'var(--int)', fontSize: 16 }}>{formatMoneyShort(detailItem.budget, currency)}</span> },
+            { label: 'Disbursed', value: <span style={{ fontWeight: 600 }}>{formatMoneyShort(detailItem.disbursed, currency)}</span> },
+            { label: 'Remaining', value: formatMoneyShort(detailItem.budget - detailItem.disbursed, currency) },
             { label: '% Used', value: <span style={{ fontWeight: 700, color: pctColor(pctOf(detailItem.disbursed, detailItem.budget)) }}>{pctOf(detailItem.disbursed, detailItem.budget)}%</span> },
             { label: 'Total Shops', value: detailItem.shops },
           ].map((row, i, arr) => (
@@ -636,9 +637,9 @@ export default function ExecDashboard() {
             { label: 'Brand', value: <BrandChip brand={detailItem.brand} /> },
             { label: 'Shop', value: detailItem.shop },
             { label: 'Location', value: detailItem.location },
-            { label: 'Today Sales', value: <span style={{ fontWeight: 700, color: 'var(--int)', fontSize: 18 }}>${detailItem.sales?.toLocaleString()}</span> },
+            { label: 'Today Sales', value: <span style={{ fontWeight: 700, color: 'var(--int)', fontSize: 18 }}>{formatMoneyShort(detailItem.sales, currency)}</span> },
             { label: 'Transactions', value: detailItem.txns },
-            { label: 'Avg Basket', value: detailItem.avg ? `$${detailItem.avg.toFixed(2)}` : '—' },
+            { label: 'Avg Basket', value: detailItem.avg ? formatMoney(detailItem.avg, currency) : '—' },
             { label: 'vs Yesterday', value: <span style={{ color: trendColor(detailItem.trend) }}>{trendLabel(detailItem.trend)}</span> },
             { label: 'Status', value: detailItem.notLive ? <StatusTag type="pending" label="NOT LIVE" /> : <StatusTag type="settled" label="LIVE" /> },
           ].map((row, i, arr) => (
@@ -662,8 +663,8 @@ export default function ExecDashboard() {
             { label: 'Shop', value: detailItem.shop },
             { label: 'Location', value: detailItem.location },
             { label: 'Brands Served', value: detailItem.brands },
-            { label: 'MTD Spend', value: <span style={{ fontWeight: 700, color: 'var(--int)', fontSize: 16 }}>${detailItem.mtd?.toLocaleString()}</span> },
-            { label: 'YTD Spend', value: <span style={{ fontWeight: 600 }}>${detailItem.ytd?.toLocaleString()}</span> },
+            { label: 'MTD Spend', value: <span style={{ fontWeight: 700, color: 'var(--int)', fontSize: 16 }}>{formatMoneyShort(detailItem.mtd, currency)}</span> },
+            { label: 'YTD Spend', value: <span style={{ fontWeight: 600 }}>{formatMoneyShort(detailItem.ytd, currency)}</span> },
             { label: 'MTD vs Last Month', value: <span style={{ color: trendColor(detailItem.trend) }}>{trendLabel(detailItem.trend)}</span> },
           ].map((row, i, arr) => (
             <div key={i} className="cvs-detail-row" style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--bs)' : 'none' }}>

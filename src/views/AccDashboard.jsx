@@ -4,6 +4,7 @@ import StatusTag from '../components/shared/StatusTag';
 import LineChart from '../components/shared/LineChart';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
 import { ValidateModal, BudgetModal, RejectModal, RequestDetailModal } from '../components/modals/AllModals';
+import { formatMoney, formatMoneyShort, convert } from '../lib/currency';
 
 const SHOPS = [
   { id: 'Sh-03', loc: 'Avondale',  budget: 1200, spent: 890,  pct: 74, status: 'monitor' },
@@ -34,7 +35,7 @@ const QUEUE_DATA = [
 const pctColor = (p) => p >= 90 ? 'var(--er)' : p >= 70 ? 'var(--wa-t)' : 'var(--ok-t)';
 
 export default function AccDashboard() {
-  const { addToast, activeTab } = useApp();
+  const { addToast, activeTab, currency } = useApp();
   const [tab, setTab] = useState(activeTab ?? 0);
   useEffect(() => { setTab(activeTab ?? 0); }, [activeTab]);
   const [search, setSearch] = useState('');
@@ -85,9 +86,9 @@ export default function AccDashboard() {
         {/* ── Tab 0: Overview ──────────────────────────────────────────── */}
         {tab === 0 && (<>
           <div className="kg c4">
-            <div className="kc bl"><div className="kl">Total Budget — Pizza Inn</div><div className="kv">$12,400</div><div className="kd nt">Across 12 shops this month</div><div className="ki">💳</div></div>
-            <div className="kc rd"><div className="kl">Total Disbursed</div><div className="kv">$8,820</div><div className="kd dn">71% of total budget used</div><div className="ki">📊</div></div>
-            <div className="kc gn"><div className="kl">Remaining Budget</div><div className="kv">$3,580</div><div className="kd up">29% available</div><div className="ki">✓</div></div>
+            <div className="kc bl"><div className="kl">Total Budget — Pizza Inn</div><div className="kv">{formatMoneyShort(12400, currency)}</div><div className="kd nt">Across 12 shops this month</div><div className="ki">💳</div></div>
+            <div className="kc rd"><div className="kl">Total Disbursed</div><div className="kv">{formatMoneyShort(8820, currency)}</div><div className="kd dn">71% of total budget used</div><div className="ki">📊</div></div>
+            <div className="kc gn"><div className="kl">Remaining Budget</div><div className="kv">{formatMoneyShort(3580, currency)}</div><div className="kd up">29% available</div><div className="ki">✓</div></div>
             <div className="kc yw"><div className="kl">Pending Requests</div><div className="kv">{QUEUE_DATA.length}</div><div className="kd nt">Awaiting your review</div><div className="ki">⏳</div></div>
           </div>
 
@@ -121,9 +122,9 @@ export default function AccDashboard() {
                 <tr key={s.id}>
                   <td><strong>{s.id}</strong></td>
                   <td>{s.loc}</td>
-                  <td>${s.budget.toLocaleString()}</td>
-                  <td>${s.spent.toLocaleString()}</td>
-                  <td>${(s.budget - s.spent).toLocaleString()}</td>
+                  <td>{formatMoneyShort(s.budget, currency)}</td>
+                  <td>{formatMoneyShort(s.spent, currency)}</td>
+                  <td>{formatMoneyShort(s.budget - s.spent, currency)}</td>
                   <td><span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 600, color: pctColor(s.pct) }}>{s.pct}%</span></td>
                   <td><StatusTag type={s.status} /></td>
                   <td><button className="rb vw" onClick={() => setViewShop(s)}>View</button></td>
@@ -138,7 +139,7 @@ export default function AccDashboard() {
           <div className="kg c4">
             <div className="kc yw"><div className="kl">Pending Review</div><div className="kv">{QUEUE_DATA.length}</div><div className="kd nt">Awaiting validation</div><div className="ki">⏳</div></div>
             <div className="kc rd"><div className="kl">Over Budget Limit</div><div className="kv">{QUEUE_DATA.filter(q => q.budget === 'over').length}</div><div className="kd dn">Require exception approval</div><div className="ki">⚠</div></div>
-            <div className="kc bl"><div className="kl">Total Queue Value</div><div className="kv">${QUEUE_DATA.reduce((s,q) => s+q.rawAmt, 0).toLocaleString()}</div><div className="kd nt">Pending disbursement</div><div className="ki">💳</div></div>
+            <div className="kc bl"><div className="kl">Total Queue Value</div><div className="kv">{formatMoneyShort(QUEUE_DATA.reduce((s,q) => s+q.rawAmt, 0), currency)}</div><div className="kd nt">Pending disbursement</div><div className="ki">💳</div></div>
             <div className="kc gn"><div className="kl">Within Limit</div><div className="kv">{QUEUE_DATA.filter(q => q.budget === 'within').length}</div><div className="kd up">Ready to validate</div><div className="ki">✓</div></div>
           </div>
 
@@ -214,9 +215,9 @@ export default function AccDashboard() {
                 <tr key={s.id}>
                   <td><strong>{s.id}</strong></td>
                   <td>{s.loc}</td>
-                  <td>${s.budget.toLocaleString()}</td>
-                  <td>${s.spent.toLocaleString()}</td>
-                  <td>${(s.budget - s.spent).toLocaleString()}</td>
+                  <td>{formatMoneyShort(s.budget, currency)}</td>
+                  <td>{formatMoneyShort(s.spent, currency)}</td>
+                  <td>{formatMoneyShort(s.budget - s.spent, currency)}</td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div style={{ width: 80, height: 6, background: 'var(--l3)', overflow: 'hidden' }}>
@@ -225,7 +226,7 @@ export default function AccDashboard() {
                       <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 600, color: pctColor(s.pct) }}>{s.pct}%</span>
                     </div>
                   </td>
-                  <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--ts)' }}>${(s.budget * 0.8).toFixed(0)}</td>
+                  <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--ts)' }}>{formatMoneyShort(Math.round(s.budget * 0.8), currency)}</td>
                   <td><StatusTag type={s.status} /></td>
                 </tr>
               ))}
@@ -243,7 +244,7 @@ export default function AccDashboard() {
         onConfirm={() => addToast('er', `${rejectTarget?.id} rejected`, 'Shop manager will be notified')}
       />
       <RequestDetailModal
-        request={viewShop ? { id: viewShop.id, date: 'Mar 2025', cat: 'Budget View', purpose: `${viewShop.loc} — ${viewShop.pct}% of $${viewShop.budget.toLocaleString()} budget`, supplier: 'N/A', amt: `$${viewShop.spent.toLocaleString()} disbursed`, status: viewShop.status } : null}
+        request={viewShop ? { id: viewShop.id, date: 'Mar 2025', cat: 'Budget View', purpose: `${viewShop.loc} — ${viewShop.pct}% of ${formatMoneyShort(viewShop.budget, currency)} budget`, supplier: 'N/A', amt: `${formatMoneyShort(viewShop.spent, currency)} disbursed`, status: viewShop.status } : null}
         onClose={() => setViewShop(null)}
       />
     </>
