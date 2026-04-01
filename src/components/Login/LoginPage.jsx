@@ -35,8 +35,7 @@ export default function LoginPage() {
           </div>
           <div className="lg-h">Cashless.<br />Verified.<br /><em>Instant.</em></div>
           <div className="lg-p">
-            End-to-end petty cash automation powered by InnBucks across all Simbisa brands.
-            IBM Carbon Design System.
+            End-to-end petty cash automation powered by InnBucks across all Simbisa brands. Built with the IBM Carbon Design System.
           </div>
         </div>
 

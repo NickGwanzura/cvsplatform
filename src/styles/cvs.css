@@ -219,9 +219,9 @@ input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--int); curs
 .lg-sq { width: 36px; height: 36px; background: var(--int); display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 13px; color: #fff; }
 .lg-nm { font-family: 'IBM Plex Sans Condensed', sans-serif; font-weight: 700; font-size: 18px; color: #f4f4f4; }
 .lg-sb { font-size: 10px; color: #6f6f6f; font-family: 'IBM Plex Mono', monospace; }
-.lg-h { font-family: 'IBM Plex Sans Condensed', sans-serif; font-size: 36px; font-weight: 700; color: #f4f4f4; line-height: 1.15; margin-bottom: 10px; }
+.lg-h { font-family: 'IBM Plex Sans Condensed', sans-serif; font-size: 56px; font-weight: 700; color: #f4f4f4; line-height: 1.1; margin-bottom: 20px; letter-spacing: -0.02em; }
 .lg-h em { font-style: normal; color: var(--int); }
-.lg-p { font-size: 13px; color: #8d8d8d; font-weight: 300; line-height: 1.6; margin-bottom: 28px; }
+.lg-p { font-size: 16px; color: #a8a8a8; font-weight: 400; line-height: 1.7; margin-bottom: 32px; max-width: 380px; }
 .lg-badges { display: flex; flex-wrap: wrap; gap: 5px; }
 .lb { padding: 3px 9px; border: 1px solid #393939; color: #6f6f6f; font-size: 10px; font-family: 'IBM Plex Mono', monospace; }
 .lg-r { flex: 1; background: #f4f4f4; display: flex; align-items: center; justify-content: center; padding: 36px; }
@@ -412,7 +412,8 @@ input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--int); curs
     padding: 28px 24px;
     border-right: none; border-bottom: 1px solid #262626;
   }
-  .lg-h { font-size: 26px; }
+  .lg-h { font-size: 32px; }
+  .lg-p { font-size: 14px; }
   .lg-r { padding: 24px 16px; align-items: flex-start; }
   .lg-card { padding: 24px 20px; max-width: 100%; }
   .role-grid { grid-template-columns: 1fr 1fr; gap: 5px; }
