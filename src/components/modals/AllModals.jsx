@@ -15,6 +15,26 @@ import {
   updateBrand,
   createShop,
   updateShop,
+  showBrand,
+  showShop,
+  listShopsForBrand,
+  createSupplier,
+  updateSupplier,
+  deleteSupplier,
+  rejectSupplier,
+  suspendSupplier,
+  reactivateSupplier,
+  createProcurementProduct,
+  updateProcurementProduct,
+  deleteProcurementProduct,
+  createProcurementCategory,
+  updateProcurementCategory,
+  deleteProcurementCategory,
+  listSupplierDocuments,
+  uploadSupplierDocument,
+  approveSupplierDocument,
+  rejectSupplierDocument,
+  deleteSupplierDocument,
 } from '../../lib/cvsApi';
 
 function extractApiError(err, fallback = 'Request failed') {
@@ -403,28 +423,236 @@ export function ShopEditModal({ shop, brands = [], onClose }) {
   );
 }
 
-/* ── New Supplier Modal ─────────────────────────────────────────────────── */
-export function NewSupplierModal({ open, onClose }) {
-  const { addToast } = useApp();
+/* ── Brand Detail Modal (read-only) ─────────────────────────────────────── */
+export function BrandDetailModal({ brandId, onClose }) {
+  const [brand, setBrand] = useState(null);
+  const [brandShops, setBrandShops] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if (!brandId) return;
+    let cancelled = false;
+    setLoading(true);
+    setErr('');
+    Promise.all([showBrand(brandId), listShopsForBrand(brandId).catch(() => [])])
+      .then(([b, s]) => {
+        if (cancelled) return;
+        setBrand(b || null);
+        setBrandShops(Array.isArray(s) ? s : []);
+      })
+      .catch((e) => !cancelled && setErr(extractApiError(e, 'Failed to load brand')))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+      setBrand(null);
+      setBrandShops([]);
+    };
+  }, [brandId]);
+
+  if (!brandId) return null;
+
   return (
-    <CvsModal open={open} onClose={onClose} title="Register New Supplier" subtitle="New suppliers are reviewed by Procurement before activation"
+    <CvsModal
+      open={!!brandId}
+      onClose={onClose}
+      title={brand?.name || 'Brand'}
+      subtitle={brand?.code ? `Code: ${brand.code}` : 'Brand details'}
+      size="lg"
+      footer={<button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Close</button>}
+    >
+      {loading && <div style={{ color: 'var(--ts)', fontSize: 12 }}>Loading…</div>}
+      {err && !loading && <div className="ntf er"><div><div className="ntf-t">Could not load brand</div><div className="ntf-b">{err}</div></div></div>}
+      {brand && !loading && (
+        <>
+          <div className="fg">
+            <div className="fi"><label className="fl">Code</label><div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{brand.code || '—'}</div></div>
+            <div className="fi"><label className="fl">Name</label><div style={{ fontWeight: 600 }}>{brand.name || '—'}</div></div>
+            <div className="fi"><label className="fl">Status</label><div><StatusTag type={brand.status || 'active'} /></div></div>
+            {brand.created_at && (
+              <div className="fi"><label className="fl">Created</label><div style={{ fontSize: 12, color: 'var(--ts)' }}>{new Date(brand.created_at).toLocaleString()}</div></div>
+            )}
+          </div>
+          <div className="tbbar" style={{ marginTop: 20 }}>
+            <div className="tbt">Shops in this brand ({brandShops.length})</div>
+          </div>
+          <table className="dt">
+            <thead><tr><th>Code</th><th>Name</th><th>Location</th><th>Status</th></tr></thead>
+            <tbody>
+              {brandShops.length === 0 ? (
+                <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--ts)', padding: 16 }}>No shops registered.</td></tr>
+              ) : brandShops.map((s) => (
+                <tr key={s.id}>
+                  <td><code style={{ color: 'var(--info)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>{s.code}</code></td>
+                  <td><strong>{s.name}</strong></td>
+                  <td style={{ fontSize: 12, color: 'var(--ts)' }}>{s.location || '—'}</td>
+                  <td><StatusTag type={s.status || 'active'} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+    </CvsModal>
+  );
+}
+
+/* ── Shop Detail Modal (read-only) ──────────────────────────────────────── */
+export function ShopDetailModal({ shopId, onClose }) {
+  const [shop, setShop] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if (!shopId) return;
+    let cancelled = false;
+    setLoading(true);
+    setErr('');
+    showShop(shopId)
+      .then((s) => !cancelled && setShop(s || null))
+      .catch((e) => !cancelled && setErr(extractApiError(e, 'Failed to load shop')))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+      setShop(null);
+    };
+  }, [shopId]);
+
+  if (!shopId) return null;
+  const brandName = shop?.brand?.name || shop?.brand_name;
+
+  return (
+    <CvsModal
+      open={!!shopId}
+      onClose={onClose}
+      title={shop?.name || 'Shop'}
+      subtitle={shop?.code ? `Code: ${shop.code}` : 'Shop details'}
+      size="md"
+      footer={<button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Close</button>}
+    >
+      {loading && <div style={{ color: 'var(--ts)', fontSize: 12 }}>Loading…</div>}
+      {err && !loading && <div className="ntf er"><div><div className="ntf-t">Could not load shop</div><div className="ntf-b">{err}</div></div></div>}
+      {shop && !loading && (
+        <div className="fg">
+          <div className="fi"><label className="fl">Code</label><div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{shop.code || '—'}</div></div>
+          <div className="fi"><label className="fl">Name</label><div style={{ fontWeight: 600 }}>{shop.name || '—'}</div></div>
+          <div className="fi"><label className="fl">Brand</label><div>{brandName ? <BrandChip brand={brandName} /> : <span style={{ color: 'var(--ts)', fontSize: 12 }}>—</span>}</div></div>
+          <div className="fi"><label className="fl">Location</label><div>{shop.location || '—'}</div></div>
+          <div className="fi"><label className="fl">Status</label><div><StatusTag type={shop.status || 'active'} /></div></div>
+          {shop.created_at && (
+            <div className="fi"><label className="fl">Created</label><div style={{ fontSize: 12, color: 'var(--ts)' }}>{new Date(shop.created_at).toLocaleString()}</div></div>
+          )}
+        </div>
+      )}
+    </CvsModal>
+  );
+}
+
+/* ── New / Edit Supplier Modal ──────────────────────────────────────────── */
+const emptySupplier = {
+  name: '', code: '', scope_type: 'global',
+  contact_person: '', phone: '', email: '',
+  address: '', inbucks_number: '', cert_expiry: '',
+};
+
+export function NewSupplierModal({ open, supplier = null, onClose }) {
+  const { addToast } = useApp();
+  const editing = !!supplier?.id;
+  const isOpen = editing ? !!supplier : !!open;
+  const [form, setForm] = useState(emptySupplier);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (editing) {
+      setForm({
+        name: supplier.name || '',
+        code: supplier.code || '',
+        scope_type: supplier.scope_type || 'global',
+        contact_person: supplier.contact_person || '',
+        phone: supplier.phone || '',
+        email: supplier.email || '',
+        address: supplier.address || '',
+        inbucks_number: supplier.inbucks_number || '',
+        cert_expiry: supplier.cert_expiry || '',
+      });
+    } else if (isOpen) {
+      setForm(emptySupplier);
+    }
+  }, [supplier, editing, isOpen]);
+
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const valid = form.name.trim().length > 0;
+
+  const close = (changed) => {
+    onClose?.(changed);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        name: form.name.trim(),
+        code: form.code.trim() || null,
+        scope_type: form.scope_type,
+        contact_person: form.contact_person.trim() || null,
+        phone: form.phone.trim() || null,
+        email: form.email.trim() || null,
+        address: form.address.trim() || null,
+        inbucks_number: form.inbucks_number.trim() || null,
+        cert_expiry: form.cert_expiry || null,
+      };
+      if (editing) {
+        await updateSupplier(supplier.id, payload);
+        addToast('ok', 'Supplier updated', payload.name);
+      } else {
+        await createSupplier(payload);
+        addToast('ok', 'Supplier registered', `${payload.name} — awaiting verification`);
+      }
+      close(true);
+    } catch (err) {
+      addToast('er', 'Save failed', extractApiError(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <CvsModal
+      open={isOpen}
+      onClose={() => close(false)}
+      title={editing ? 'Edit Supplier' : 'Register New Supplier'}
+      subtitle={editing ? supplier.name : 'New suppliers are reviewed by Procurement before activation'}
       footer={<>
-        <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Cancel</button>
-        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} onClick={() => { onClose(); addToast('info', 'Supplier registration submitted', 'Procurement will verify within 24–48 hours'); }}>Submit for Review</button>
+        <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={() => close(false)}>Cancel</button>
+        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} disabled={!valid || saving} onClick={save}>
+          {saving ? 'Saving…' : editing ? 'Save Changes' : 'Submit for Review'}
+        </button>
       </>}
     >
       <div className="fg">
-        <div className="fi"><label className="fl">Supplier Name</label><input className="fin" placeholder="Company legal name" /></div>
-        <div className="fi"><label className="fl">Trading Name</label><input className="fin" placeholder="If different from legal name" /></div>
-        <div className="fi"><label className="fl">Tax / TIN Number</label><input className="fin" placeholder="ZW-TIN-XXXXXXXX" /></div>
-        <div className="fi"><label className="fl">Category</label><select className="fsel"><option>Maintenance & Repairs</option><option>Cleaning Supplies</option><option>Gas & Utilities</option><option>Stationery</option><option>Equipment</option><option>Other</option></select></div>
-        <div className="fi"><label className="fl">InnBucks Wallet Number</label><input className="fin" placeholder="IB-XXXX-XXXX" /></div>
-        <div className="fi"><label className="fl">Contact Phone</label><input className="fin" placeholder="+263 7X XXX XXXX" /></div>
-        <div className="fi full"><label className="fl">Business Address</label><input className="fin" placeholder="Street address, City" /></div>
+        <div className="fi"><label className="fl">Supplier Name</label><input className="fin" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Company legal name" /></div>
+        <div className="fi"><label className="fl">Code</label><input className="fin" value={form.code} onChange={(e) => set('code', e.target.value)} placeholder="e.g. SUP-001" /></div>
+        <div className="fi">
+          <label className="fl">Scope</label>
+          <select className="fsel" value={form.scope_type} onChange={(e) => set('scope_type', e.target.value)}>
+            <option value="global">Global (all brands)</option>
+            <option value="restricted">Restricted (specific brands)</option>
+          </select>
+        </div>
+        <div className="fi"><label className="fl">InnBucks Wallet Number</label><input className="fin" value={form.inbucks_number} onChange={(e) => set('inbucks_number', e.target.value)} placeholder="IB-XXXX-XXXX" /></div>
+        <div className="fi"><label className="fl">Contact Person</label><input className="fin" value={form.contact_person} onChange={(e) => set('contact_person', e.target.value)} placeholder="Full name" /></div>
+        <div className="fi"><label className="fl">Contact Phone</label><input className="fin" value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="+263 7X XXX XXXX" /></div>
+        <div className="fi"><label className="fl">Email</label><input className="fin" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="supplier@example.com" /></div>
+        <div className="fi"><label className="fl">Certification Expiry</label><input className="fin" type="date" value={form.cert_expiry} onChange={(e) => set('cert_expiry', e.target.value)} /></div>
+        <div className="fi full"><label className="fl">Business Address</label><input className="fin" value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="Street address, City" /></div>
       </div>
-      <div style={{ marginTop: 11, padding: 10, background: 'var(--info-bg)', borderLeft: '3px solid var(--int)' }}>
-        <div style={{ fontSize: 11, color: 'var(--info)' }}>Procurement will verify supplier credentials and activate within 24–48 hours. You will be notified by email.</div>
-      </div>
+      {!editing && (
+        <div style={{ marginTop: 11, padding: 10, background: 'var(--info-bg)', borderLeft: '3px solid var(--int)' }}>
+          <div style={{ fontSize: 11, color: 'var(--info)' }}>Procurement will verify supplier credentials and activate within 24–48 hours.</div>
+        </div>
+      )}
     </CvsModal>
   );
 }
@@ -949,6 +1177,486 @@ export function ProfileModal({ open, onClose }) {
         <div className="fi"><label className="fl">Email Address</label><input className="fin" type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder={session.email || 'No email on file'} /></div>
         <div className="fi"><label className="fl">Phone Number</label><input className="fin" type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder={session.phone || 'No phone on file'} /></div>
       </div>
+    </CvsModal>
+  );
+}
+
+/* ── Reject Supplier Modal ──────────────────────────────────────────────── */
+export function RejectSupplierModal({ supplier, onClose }) {
+  const { addToast } = useApp();
+  const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { if (supplier) setReason(''); }, [supplier]);
+  if (!supplier) return null;
+
+  const submit = async () => {
+    setSaving(true);
+    try {
+      await rejectSupplier(supplier.id, reason.trim());
+      addToast('ok', 'Supplier rejected', supplier.name);
+      onClose(true);
+    } catch (err) {
+      addToast('er', 'Reject failed', extractApiError(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <CvsModal
+      open={!!supplier}
+      onClose={() => onClose(false)}
+      title="Reject Supplier"
+      subtitle={supplier.name}
+      footer={<>
+        <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={() => onClose(false)}>Cancel</button>
+        <button className="ab dan" style={{ height: 42, padding: '0 20px' }} disabled={saving || !reason.trim()} onClick={submit}>{saving ? 'Rejecting…' : 'Confirm Rejection'}</button>
+      </>}
+    >
+      <div style={{ marginBottom: 13, padding: 10, background: 'var(--er-bg)', borderLeft: '3px solid var(--er)' }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--er-t)', marginBottom: 3 }}>The supplier will be marked rejected</div>
+        <div style={{ fontSize: 12, color: 'var(--ts)' }}>They will be notified by email and won't appear as a verified option to managers.</div>
+      </div>
+      <label className="fl">Rejection Reason (required)</label>
+      <textarea className="fin" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Failed compliance check, missing certifications" style={{ resize: 'vertical', minHeight: 80 }} />
+    </CvsModal>
+  );
+}
+
+/* ── Suspend Supplier Modal ─────────────────────────────────────────────── */
+export function SuspendSupplierModal({ supplier, onClose }) {
+  const { addToast } = useApp();
+  const [saving, setSaving] = useState(false);
+  if (!supplier) return null;
+
+  const submit = async () => {
+    setSaving(true);
+    try {
+      await suspendSupplier(supplier.id);
+      addToast('ok', 'Supplier suspended', supplier.name);
+      onClose(true);
+    } catch (err) {
+      addToast('er', 'Suspend failed', extractApiError(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <CvsModal
+      open={!!supplier}
+      onClose={() => onClose(false)}
+      title="Suspend Supplier"
+      subtitle={supplier.name}
+      footer={<>
+        <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={() => onClose(false)}>Cancel</button>
+        <button className="ab dan" style={{ height: 42, padding: '0 20px' }} disabled={saving} onClick={submit}>{saving ? 'Suspending…' : 'Suspend Supplier'}</button>
+      </>}
+    >
+      <div style={{ padding: 10, background: 'var(--wa-bg)', borderLeft: '3px solid var(--wa)', marginBottom: 13 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--wa-t)', marginBottom: 3 }}>Pause activity for this supplier</div>
+        <div style={{ fontSize: 12, color: 'var(--ts)' }}>The supplier will be hidden from new requests until reactivated. Existing requests are unaffected.</div>
+      </div>
+      <div className="cvs-detail-row"><span className="cvs-detail-label">Status</span><span>{supplier.status || '—'}</span></div>
+      <div className="cvs-detail-row" style={{ borderBottom: 'none' }}><span className="cvs-detail-label">Code</span><span>{supplier.code || '—'}</span></div>
+    </CvsModal>
+  );
+}
+
+/* ── Generic Confirm Delete Modal ───────────────────────────────────────── */
+export function ConfirmDeleteModal({ open, title, subtitle, message, confirmLabel = 'Delete', onConfirm, onClose }) {
+  const [busy, setBusy] = useState(false);
+  if (!open) return null;
+  const run = async () => {
+    setBusy(true);
+    try { await onConfirm(); } finally { setBusy(false); }
+  };
+  return (
+    <CvsModal
+      open={!!open}
+      onClose={onClose}
+      title={title || 'Confirm Delete'}
+      subtitle={subtitle}
+      footer={<>
+        <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Cancel</button>
+        <button className="ab dan" style={{ height: 42, padding: '0 20px' }} disabled={busy} onClick={run}>{busy ? 'Working…' : confirmLabel}</button>
+      </>}
+    >
+      <div style={{ padding: 12, background: 'var(--er-bg)', borderLeft: '3px solid var(--er)' }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--er-t)', marginBottom: 4 }}>This action cannot be undone</div>
+        <div style={{ fontSize: 12, color: 'var(--ts)' }}>{message || 'Are you sure you want to delete this record?'}</div>
+      </div>
+    </CvsModal>
+  );
+}
+
+/* ── Procurement Product Modal (create / edit) ──────────────────────────── */
+const emptyProduct = {
+  code: '', name: '', category_id: '', department: '',
+  default_price: '', unit: '', min_order: '',
+};
+
+export function ProcurementProductModal({ open, product = null, categories = [], onClose }) {
+  const { addToast } = useApp();
+  const editing = !!product?.id;
+  const isOpen = editing ? !!product : !!open;
+  const [form, setForm] = useState(emptyProduct);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (editing) {
+      setForm({
+        code: product.code || '',
+        name: product.name || '',
+        category_id: product.category_id || product.category?.id || '',
+        department: product.department || '',
+        default_price: product.default_price ?? product.price ?? '',
+        unit: product.unit || '',
+        min_order: product.min_order ?? '',
+      });
+    } else if (isOpen) {
+      setForm(emptyProduct);
+    }
+  }, [product, editing, isOpen]);
+
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const valid = form.name.trim().length > 0;
+
+  const close = (changed) => onClose?.(changed);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        code: form.code.trim() || null,
+        name: form.name.trim(),
+        category_id: form.category_id || null,
+        department: form.department.trim() || null,
+        default_price: form.default_price === '' ? null : Number(form.default_price),
+        unit: form.unit.trim() || null,
+        min_order: form.min_order === '' ? null : Number(form.min_order),
+      };
+      if (editing) {
+        await updateProcurementProduct(product.id, payload);
+        addToast('ok', 'Product updated', payload.name);
+      } else {
+        await createProcurementProduct(payload);
+        addToast('ok', 'Product created', payload.name);
+      }
+      close(true);
+    } catch (err) {
+      addToast('er', 'Save failed', extractApiError(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <CvsModal
+      open={isOpen}
+      onClose={() => close(false)}
+      title={editing ? 'Edit Product' : 'New Product'}
+      subtitle={editing ? product.name : 'Add a product to the procurement catalogue'}
+      footer={<>
+        <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={() => close(false)}>Cancel</button>
+        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} disabled={!valid || saving} onClick={save}>{saving ? 'Saving…' : editing ? 'Save Changes' : 'Create Product'}</button>
+      </>}
+    >
+      <div className="fg">
+        <div className="fi"><label className="fl">Code</label><input className="fin" value={form.code} onChange={(e) => set('code', e.target.value)} placeholder="e.g. PRD-001" /></div>
+        <div className="fi"><label className="fl">Name</label><input className="fin" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Product name" /></div>
+        <div className="fi">
+          <label className="fl">Category</label>
+          <select className="fsel" value={form.category_id} onChange={(e) => set('category_id', e.target.value)}>
+            <option value="">— Select category —</option>
+            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div className="fi"><label className="fl">Department</label><input className="fin" value={form.department} onChange={(e) => set('department', e.target.value)} placeholder="e.g. Kitchen, Cleaning" /></div>
+        <div className="fi"><label className="fl">Default Price (USD)</label><input className="fin" type="number" min="0" step="0.01" value={form.default_price} onChange={(e) => set('default_price', e.target.value)} placeholder="0.00" /></div>
+        <div className="fi"><label className="fl">Unit</label><input className="fin" value={form.unit} onChange={(e) => set('unit', e.target.value)} placeholder="e.g. kg, box, litre" /></div>
+        <div className="fi"><label className="fl">Min Order</label><input className="fin" type="number" min="0" value={form.min_order} onChange={(e) => set('min_order', e.target.value)} placeholder="0" /></div>
+      </div>
+    </CvsModal>
+  );
+}
+
+/* ── Procurement Category Modal (create / edit) ─────────────────────────── */
+const emptyCategory = { code: '', name: '' };
+
+export function ProcurementCategoryModal({ open, category = null, onClose }) {
+  const { addToast } = useApp();
+  const editing = !!category?.id;
+  const isOpen = editing ? !!category : !!open;
+  const [form, setForm] = useState(emptyCategory);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (editing) {
+      setForm({ code: category.code || '', name: category.name || '' });
+    } else if (isOpen) {
+      setForm(emptyCategory);
+    }
+  }, [category, editing, isOpen]);
+
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const valid = form.name.trim().length > 0;
+
+  const close = (changed) => onClose?.(changed);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const payload = { code: form.code.trim() || null, name: form.name.trim() };
+      if (editing) {
+        await updateProcurementCategory(category.id, payload);
+        addToast('ok', 'Category updated', payload.name);
+      } else {
+        await createProcurementCategory(payload);
+        addToast('ok', 'Category created', payload.name);
+      }
+      close(true);
+    } catch (err) {
+      addToast('er', 'Save failed', extractApiError(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <CvsModal
+      open={isOpen}
+      onClose={() => close(false)}
+      size="sm"
+      title={editing ? 'Edit Category' : 'New Category'}
+      subtitle={editing ? category.name : 'Add a procurement category'}
+      footer={<>
+        <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={() => close(false)}>Cancel</button>
+        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} disabled={!valid || saving} onClick={save}>{saving ? 'Saving…' : editing ? 'Save Changes' : 'Create Category'}</button>
+      </>}
+    >
+      <div className="fg">
+        <div className="fi"><label className="fl">Code</label><input className="fin" value={form.code} onChange={(e) => set('code', e.target.value)} placeholder="e.g. CAT-001" /></div>
+        <div className="fi"><label className="fl">Name</label><input className="fin" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Category name" /></div>
+      </div>
+    </CvsModal>
+  );
+}
+
+/* ── Manage Categories Modal ────────────────────────────────────────────── */
+export function ManageCategoriesModal({ open, categories = [], onClose, onChanged }) {
+  const { addToast } = useApp();
+  const [editing, setEditing] = useState(null); // category object or { _new: true }
+  const [deleting, setDeleting] = useState(null);
+
+  if (!open) return null;
+
+  const remove = async () => {
+    try {
+      await deleteProcurementCategory(deleting.id);
+      addToast('ok', 'Category deleted', deleting.name);
+      setDeleting(null);
+      onChanged?.();
+    } catch (err) {
+      addToast('er', 'Delete failed', extractApiError(err));
+    }
+  };
+
+  return (
+    <>
+      <CvsModal
+        open={open}
+        onClose={onClose}
+        size="md"
+        title="Manage Categories"
+        subtitle={`${categories.length} categor${categories.length === 1 ? 'y' : 'ies'}`}
+        footer={<>
+          <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Close</button>
+          <button className="ab pri" style={{ height: 42, padding: '0 20px' }} onClick={() => setEditing({ _new: true })}>+ New Category</button>
+        </>}
+      >
+        {categories.length === 0 ? (
+          <div style={{ textAlign: 'center', color: 'var(--ts)', padding: 20, fontSize: 12 }}>No categories yet — click “+ New Category” to add one.</div>
+        ) : (
+          <table className="dt">
+            <thead><tr><th>Code</th><th>Name</th><th style={{ width: 120 }}>Action</th></tr></thead>
+            <tbody>
+              {categories.map((c) => (
+                <tr key={c.id}>
+                  <td><code style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--int)' }}>{c.code || '—'}</code></td>
+                  <td><strong>{c.name}</strong></td>
+                  <td>
+                    <div className="ra">
+                      <button className="rb ed" onClick={() => setEditing(c)}>Edit</button>
+                      <button className="rb rv" onClick={() => setDeleting(c)}>Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </CvsModal>
+
+      <ProcurementCategoryModal
+        open={editing?._new ? true : false}
+        category={editing && !editing._new ? editing : null}
+        onClose={(changed) => { setEditing(null); if (changed) onChanged?.(); }}
+      />
+
+      <ConfirmDeleteModal
+        open={!!deleting}
+        title="Delete Category"
+        subtitle={deleting?.name}
+        message={`Delete category “${deleting?.name}”? Products using this category will be unlinked.`}
+        onConfirm={remove}
+        onClose={() => setDeleting(null)}
+      />
+    </>
+  );
+}
+
+/* ── Supplier Documents Modal (list + upload + review) ──────────────────── */
+export function SupplierDocumentsModal({ open, supplier, onClose }) {
+  const { addToast } = useApp();
+  const [docs, setDocs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [docType, setDocType] = useState('certificate');
+  const [title, setTitle] = useState('');
+  const [file, setFile] = useState(null);
+
+  const reload = async () => {
+    if (!supplier?.id) return;
+    setLoading(true);
+    try {
+      const data = await listSupplierDocuments(supplier.id);
+      setDocs(Array.isArray(data) ? data : []);
+    } catch (err) {
+      addToast('er', 'Failed to load documents', extractApiError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (open && supplier?.id) reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, supplier?.id]);
+
+  if (!open || !supplier) return null;
+
+  const upload = async () => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      await uploadSupplierDocument(supplier.id, { document_type: docType, title: title.trim() || file.name, file });
+      addToast('ok', 'Document uploaded', title.trim() || file.name);
+      setFile(null); setTitle('');
+      reload();
+    } catch (err) {
+      addToast('er', 'Upload failed', extractApiError(err));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const approve = async (d) => {
+    try {
+      await approveSupplierDocument(supplier.id, d.id);
+      addToast('ok', 'Document approved', d.title || d.document_type);
+      reload();
+    } catch (err) { addToast('er', 'Approve failed', extractApiError(err)); }
+  };
+
+  const reject = async (d) => {
+    const reason = window.prompt('Reason for rejection (optional):', '');
+    if (reason === null) return;
+    try {
+      await rejectSupplierDocument(supplier.id, d.id, reason || '');
+      addToast('ok', 'Document rejected', d.title || d.document_type);
+      reload();
+    } catch (err) { addToast('er', 'Reject failed', extractApiError(err)); }
+  };
+
+  const remove = async (d) => {
+    if (!window.confirm(`Delete document “${d.title || d.document_type}”?`)) return;
+    try {
+      await deleteSupplierDocument(supplier.id, d.id);
+      addToast('ok', 'Document deleted', d.title || d.document_type);
+      reload();
+    } catch (err) { addToast('er', 'Delete failed', extractApiError(err)); }
+  };
+
+  return (
+    <CvsModal
+      open={open}
+      onClose={onClose}
+      size="lg"
+      title="Supplier Documents"
+      subtitle={supplier.name}
+      footer={<button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Close</button>}
+    >
+      <div style={{ background: 'var(--l2)', border: '1px solid var(--bs)', padding: 12, marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ts)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 8 }}>Upload New Document</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr 1fr auto', gap: 8, alignItems: 'end' }}>
+          <div>
+            <label className="fl">Type</label>
+            <select className="fsel" value={docType} onChange={(e) => setDocType(e.target.value)}>
+              <option value="certificate">Certificate</option>
+              <option value="tax">Tax Clearance</option>
+              <option value="contract">Contract</option>
+              <option value="insurance">Insurance</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label className="fl">Title</label>
+            <input className="fin" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Defaults to file name" />
+          </div>
+          <div>
+            <label className="fl">File</label>
+            <input className="fin" type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+          </div>
+          <button className="ab pri" style={{ height: 34 }} disabled={!file || uploading} onClick={upload}>{uploading ? 'Uploading…' : 'Upload'}</button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', color: 'var(--ts)', padding: 20, fontSize: 12 }}>Loading documents…</div>
+      ) : docs.length === 0 ? (
+        <div style={{ textAlign: 'center', color: 'var(--ts)', padding: 20, fontSize: 12 }}>No documents on file.</div>
+      ) : (
+        <table className="dt">
+          <thead><tr><th>Type</th><th>Title</th><th>Status</th><th>Uploaded</th><th style={{ width: 220 }}>Action</th></tr></thead>
+          <tbody>
+            {docs.map((d) => {
+              const status = (d.status || 'pending').toLowerCase();
+              const tagType = status === 'approved' ? 'active' : status === 'rejected' ? 'over' : 'pending';
+              return (
+                <tr key={d.id}>
+                  <td style={{ fontSize: 12 }}>{d.document_type || '—'}</td>
+                  <td><strong>{d.title || '—'}</strong>{d.file_url && <> · <a href={d.file_url} target="_blank" rel="noreferrer" style={{ color: 'var(--int)', fontSize: 11 }}>View</a></>}</td>
+                  <td><StatusTag type={tagType} label={status.toUpperCase()} /></td>
+                  <td style={{ fontSize: 11, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace" }}>{d.uploaded_at || d.created_at || '—'}</td>
+                  <td>
+                    <div className="ra">
+                      {status !== 'approved' && <button className="rb ap" onClick={() => approve(d)}>Approve</button>}
+                      {status !== 'rejected' && <button className="rb rv" onClick={() => reject(d)}>Reject</button>}
+                      <button className="rb ed" onClick={() => remove(d)}>Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
     </CvsModal>
   );
 }

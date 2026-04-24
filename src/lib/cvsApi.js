@@ -147,6 +147,9 @@ export const updateUserStatus = (id, status) =>
 // Roles
 export const listRoles = () => api.get('/roles').then(unwrap);
 
+// Permissions
+export const listPermissions = () => api.get('/permissions').then(unwrap);
+
 // Brands
 export const listBrands = () => api.get('/brand-shop/brands').then(unwrap);
 export const showBrand = (id) => api.get(`/brand-shop/brands/${id}`).then((r) => r.data);
@@ -167,5 +170,112 @@ export const inviteUser = (data) => api.post('/invitations', data).then((r) => r
 export const showInvitation = (id) => api.get(`/invitations/${id}`).then((r) => r.data);
 export const resendInvitation = (id) => api.post(`/invitations/${id}/resend`).then((r) => r.data);
 export const revokeInvite = (id) => api.post(`/invitations/${id}/revoke`).then((r) => r.data);
+
+// Procurement — Products
+export const listProcurementProducts = () =>
+  api.get('/procurement/products').then(unwrap);
+export const showProcurementProduct = (id) =>
+  api.get(`/procurement/products/${id}`).then((r) => r.data);
+export const createProcurementProduct = (data) =>
+  api.post('/procurement/products', data).then((r) => r.data);
+export const updateProcurementProduct = (id, data) =>
+  api.put(`/procurement/products/${id}`, data).then((r) => r.data);
+export const deleteProcurementProduct = (id) =>
+  api.delete(`/procurement/products/${id}`).then((r) => r.data);
+
+// Procurement — Categories
+export const listProcurementCategories = () =>
+  api.get('/procurement/categories').then(unwrap);
+export const showProcurementCategory = (id) =>
+  api.get(`/procurement/categories/${id}`).then((r) => r.data);
+export const createProcurementCategory = (data) =>
+  api.post('/procurement/categories', data).then((r) => r.data);
+export const updateProcurementCategory = (id, data) =>
+  api.put(`/procurement/categories/${id}`, data).then((r) => r.data);
+export const deleteProcurementCategory = (id) =>
+  api.delete(`/procurement/categories/${id}`).then((r) => r.data);
+
+// Procurement — Suppliers
+export const listSuppliers = () => api.get('/procurement/suppliers').then(unwrap);
+export const showSupplier = (id) =>
+  api.get(`/procurement/suppliers/${id}`).then((r) => r.data);
+export const createSupplier = (data) =>
+  api.post('/procurement/suppliers', data).then((r) => r.data);
+export const updateSupplier = (id, data) =>
+  api.put(`/procurement/suppliers/${id}`, data).then((r) => r.data);
+export const deleteSupplier = (id) =>
+  api.delete(`/procurement/suppliers/${id}`).then((r) => r.data);
+
+// Supplier workflow
+export const approveSupplier = (id) =>
+  api.post(`/procurement/suppliers/${id}/approve`).then((r) => r.data);
+export const rejectSupplier = (id, reason) =>
+  api.post(`/procurement/suppliers/${id}/reject`, { reason }).then((r) => r.data);
+export const suspendSupplier = (id) =>
+  api.post(`/procurement/suppliers/${id}/suspend`).then((r) => r.data);
+export const reactivateSupplier = (id) =>
+  api.post(`/procurement/suppliers/${id}/reactivate`).then((r) => r.data);
+
+// Sync the brands a supplier is scoped to. Payload: { brand_ids: [uuid, ...] }
+export const syncSupplierBrands = (id, brandIds) =>
+  api
+    .post(`/procurement/suppliers/${id}/brands`, { brand_ids: brandIds })
+    .then((r) => r.data);
+
+// Supplier documents
+export const listSupplierDocuments = (supplierId) =>
+  api.get(`/procurement/suppliers/${supplierId}/documents`).then(unwrap);
+
+// Upload a supplier document. Accepts either a FormData instance or
+// { document_type, title, file } — the latter is converted to FormData here.
+// Content-Type is left unset so the browser sets the multipart boundary.
+export const uploadSupplierDocument = (supplierId, payload) => {
+  const form = payload instanceof FormData ? payload : (() => {
+    const fd = new FormData();
+    if (payload.document_type != null) fd.append('document_type', payload.document_type);
+    if (payload.title != null) fd.append('title', payload.title);
+    if (payload.file) fd.append('file', payload.file);
+    return fd;
+  })();
+  return api
+    .post(`/procurement/suppliers/${supplierId}/documents`, form, {
+      headers: { 'Content-Type': undefined },
+    })
+    .then((r) => r.data);
+};
+
+export const approveSupplierDocument = (supplierId, documentId) =>
+  api
+    .post(`/procurement/suppliers/${supplierId}/documents/${documentId}/approve`)
+    .then((r) => r.data);
+
+export const rejectSupplierDocument = (supplierId, documentId, reason) =>
+  api
+    .post(`/procurement/suppliers/${supplierId}/documents/${documentId}/reject`, { reason })
+    .then((r) => r.data);
+
+export const deleteSupplierDocument = (supplierId, documentId) =>
+  api
+    .delete(`/procurement/suppliers/${supplierId}/documents/${documentId}`)
+    .then((r) => r.data);
+
+// Supplier ↔ Product links
+export const listSupplierProducts = (supplierId) =>
+  api.get(`/procurement/suppliers/${supplierId}/products`).then(unwrap);
+
+export const linkSupplierProduct = (supplierId, productId) =>
+  api
+    .post(`/procurement/suppliers/${supplierId}/products`, { product_id: productId })
+    .then((r) => r.data);
+
+export const updateSupplierProduct = (supplierId, productId, data) =>
+  api
+    .put(`/procurement/suppliers/${supplierId}/products/${productId}`, data)
+    .then((r) => r.data);
+
+export const unlinkSupplierProduct = (supplierId, productId) =>
+  api
+    .delete(`/procurement/suppliers/${supplierId}/products/${productId}`)
+    .then((r) => r.data);
 
 export default api;

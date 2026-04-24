@@ -10,6 +10,8 @@ import {
   CreateUserModal,
   BrandEditModal,
   ShopEditModal,
+  BrandDetailModal,
+  ShopDetailModal,
 } from '../components/modals/AllModals';
 import {
   listUsers,
@@ -56,6 +58,8 @@ export default function AdminDashboard() {
   const [revokeUser, setRevokeUser] = useState(null);
   const [editBrand, setEditBrand] = useState(null);
   const [editShop, setEditShop] = useState(null);
+  const [viewBrandId, setViewBrandId] = useState(null);
+  const [viewShopId, setViewShopId] = useState(null);
   const [logSearch, setLogSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
 
@@ -329,9 +333,14 @@ export default function AdminDashboard() {
                   <td><StatusTag type={b.status} /></td>
                   <td style={{ fontSize: 12, color: 'var(--ts)' }}>{shops.filter((s) => s.brand_id === b.id).length}</td>
                   <td>
-                    <button className="rb ed" onClick={() => setEditBrand(b)} title="Edit brand">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                    </button>
+                    <div className="ra">
+                      <button className="rb vw" onClick={() => setViewBrandId(b.id)} title="View brand">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      </button>
+                      <button className="rb ed" onClick={() => setEditBrand(b)} title="Edit brand">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -357,9 +366,14 @@ export default function AdminDashboard() {
                   <td style={{ fontSize: 12, color: 'var(--ts)' }}>{s.location || '—'}</td>
                   <td><StatusTag type={s.status} /></td>
                   <td>
-                    <button className="rb ed" onClick={() => setEditShop(s)} title="Edit shop">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                    </button>
+                    <div className="ra">
+                      <button className="rb vw" onClick={() => setViewShopId(s.id)} title="View shop">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      </button>
+                      <button className="rb ed" onClick={() => setEditShop(s)} title="Edit shop">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -399,6 +413,8 @@ export default function AdminDashboard() {
       <RevokeUserModal user={revokeUser} onClose={(changed) => { setRevokeUser(null); if (changed) refresh(); }} />
       <BrandEditModal brand={editBrand} onClose={(changed) => { setEditBrand(null); if (changed) refresh(); }} />
       <ShopEditModal shop={editShop} brands={brands} onClose={(changed) => { setEditShop(null); if (changed) refresh(); }} />
+      <BrandDetailModal brandId={viewBrandId} onClose={() => setViewBrandId(null)} />
+      <ShopDetailModal shopId={viewShopId} onClose={() => setViewShopId(null)} />
     </>
   );
 }

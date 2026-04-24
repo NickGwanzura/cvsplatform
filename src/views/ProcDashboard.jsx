@@ -1,17 +1,39 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { formatMoney, formatMoneyShort, convert } from '../lib/currency';
 import StatusTag from '../components/shared/StatusTag';
 import BrandChip from '../components/shared/BrandChip';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
 import DataTable from '../components/shared/DataTable';
+import {
+  listSuppliers,
+  listProcurementProducts,
+  listProcurementCategories,
+  approveSupplier,
+  reactivateSupplier,
+  deleteSupplier,
+  deleteProcurementProduct,
+} from '../lib/cvsApi';
+import {
+  NewSupplierModal,
+  RejectSupplierModal,
+  SuspendSupplierModal,
+  ConfirmDeleteModal,
+  ProcurementProductModal,
+  ManageCategoriesModal,
+  SupplierDocumentsModal,
+} from '../components/modals/AllModals';
 
-const SUPPLIERS = [];
+// Mirror of BrandChip's chip class map so supplier brand badges render in-line.
+const BRAND_CLS = {
+  'Chicken Inn': 'bci', 'Pizza Inn': 'bcp', 'Creamy Inn': 'bcc',
+  "Nando's": 'bcn', 'Steers': 'bcs', "Roco Mamma's": 'bcr',
+  'Ocean Basket': 'bcob', 'Hefelies': 'bchf', "Pastino's": 'bcpa',
+};
+const brandTuple = (name) => [name, BRAND_CLS[name] || 'bci'];
 
-const PRODUCTS_DATA = [];
-
+// No API yet for per-shop breakdown or supplier statements — empty placeholders.
 const BREAKDOWN = [];
-
 const SUPPLIER_STATEMENTS = [];
 
 const trendColor = (t) => t > 0 ? 'var(--ok)' : t < 0 ? 'var(--er)' : 'var(--ts)';
@@ -30,6 +52,137 @@ export default function ProcDashboard() {
   const [supplierProfile, setSupplierProfile] = useState(null);
   const [stmtSearch, setStmtSearch] = useState('');
   const [stmtStatusFilter, setStmtStatusFilter] = useState('All');
+
+  // Server data
+  const [suppliersRaw, setSuppliersRaw] = useState([]);
+  const [productsRaw, setProductsRaw] = useState([]);
+  const [categoriesRaw, setCategoriesRaw] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+
+  // Modal state
+  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
+  const [editSupplier, setEditSupplier] = useState(null);
+  const [rejectSupplierTarget, setRejectSupplierTarget] = useState(null);
+  const [suspendSupplierTarget, setSuspendSupplierTarget] = useState(null);
+  const [deleteSupplierTarget, setDeleteSupplierTarget] = useState(null);
+  const [docsSupplierTarget, setDocsSupplierTarget] = useState(null);
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const [editProduct, setEditProduct] = useState(null);
+  const [deleteProductTarget, setDeleteProductTarget] = useState(null);
+  const [manageCatsOpen, setManageCatsOpen] = useState(false);
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    setLoadError('');
+    try {
+      const [sups, prods, cats] = await Promise.all([
+        listSuppliers().catch(() => []),
+        listProcurementProducts().catch(() => []),
+        listProcurementCategories().catch(() => []),
+      ]);
+      setSuppliersRaw(Array.isArray(sups) ? sups : []);
+      setProductsRaw(Array.isArray(prods) ? prods : []);
+      setCategoriesRaw(Array.isArray(cats) ? cats : []);
+    } catch (err) {
+      setLoadError(err?.response?.data?.message || err.message || 'Failed to load procurement data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  const categoryNameById = useMemo(
+    () => Object.fromEntries(categoriesRaw.map((c) => [c.id, c.name])),
+    [categoriesRaw]
+  );
+
+  // Map API supplier → UI shape. MTD/YTD/txns/trend/cert aren't returned by
+  // the current API; default to 0/null so summary tiles render without crashing.
+  const SUPPLIERS = useMemo(() => suppliersRaw.map((s) => ({
+    id: s.id,
+    name: s.name || '—',
+    code: s.code || '',
+    cat: s.scope_type === 'global' ? 'Global' : 'Restricted',
+    dept: s.scope_type ? s.scope_type.toUpperCase() : '—',
+    contact: s.contact_person || '—',
+    phone: s.phone || '—',
+    email: s.email || '—',
+    address: s.address || '—',
+    wallet: s.inbucks_number || '',
+    verified: s.status === 'active' || s.status === 'approved',
+    status: s.status || 'pending',
+    cert: s.cert_expiry || null,
+    spend: Number(s.mtd_spend ?? 0),
+    ytd: Number(s.ytd_spend ?? 0),
+    txns: Number(s.txns ?? 0),
+    trend: s.trend ?? null,
+    brands: Array.isArray(s.brands)
+      ? s.brands.map((b) => brandTuple(typeof b === 'string' ? b : b?.name || ''))
+      : [],
+  })), [suppliersRaw]);
+
+  // Map API product → UI shape. Supplier linkage & pricing live on the pivot
+  // (listSupplierProducts) so default to '—'/0 in the catalog view.
+  const PRODUCTS_DATA = useMemo(() => productsRaw.map((p) => ({
+    id: p.id,
+    code: p.code || '',
+    name: p.name || '—',
+    cat: categoryNameById[p.category_id] || p.category?.name || '—',
+    dept: p.department || '—',
+    supplier: p.supplier_name || '—',
+    price: Number(p.default_price ?? p.price ?? 0),
+    unit: p.unit || '—',
+    minOrder: Number(p.min_order ?? 0),
+    brands: p.brands_label || '—',
+  })), [productsRaw, categoryNameById]);
+
+  const handleVerifySupplier = async (s) => {
+    try {
+      await approveSupplier(s.id);
+      addToast('ok', `${s.name} verified`, 'Supplier is now active on the platform');
+      loadAll();
+    } catch (err) {
+      addToast('er', 'Verification failed', err?.response?.data?.message || err.message || 'Request failed');
+    }
+  };
+
+  const handleReactivateSupplier = async (s) => {
+    try {
+      await reactivateSupplier(s.id);
+      addToast('ok', `${s.name} reactivated`, 'Supplier is active again');
+      loadAll();
+    } catch (err) {
+      addToast('er', 'Reactivation failed', err?.response?.data?.message || err.message || 'Request failed');
+    }
+  };
+
+  const handleDeleteSupplier = async () => {
+    if (!deleteSupplierTarget) return;
+    try {
+      await deleteSupplier(deleteSupplierTarget.id);
+      addToast('ok', 'Supplier removed', deleteSupplierTarget.name);
+      setDeleteSupplierTarget(null);
+      // If we were viewing this supplier's profile, drop back to the list.
+      if (supplierProfile?.id === deleteSupplierTarget.id) setSupplierProfile(null);
+      loadAll();
+    } catch (err) {
+      addToast('er', 'Delete failed', err?.response?.data?.message || err.message || 'Request failed');
+    }
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!deleteProductTarget) return;
+    try {
+      await deleteProcurementProduct(deleteProductTarget.id);
+      addToast('ok', 'Product removed', deleteProductTarget.name);
+      setDeleteProductTarget(null);
+      loadAll();
+    } catch (err) {
+      addToast('er', 'Delete failed', err?.response?.data?.message || err.message || 'Request failed');
+    }
+  };
 
   const tabs = ['Overview', 'Supplier Profiles', 'Products', 'Analytics', 'Statements', 'Supplier Portal'];
 
@@ -84,6 +237,20 @@ export default function ProcDashboard() {
         </div>
       </div>
       <div className="cnt">
+        {loading && (
+          <div className="ntf info" style={{ marginBottom: 12 }}>
+            <div><div className="ntf-t">Loading procurement data…</div></div>
+          </div>
+        )}
+        {loadError && !loading && (
+          <div className="ntf er" style={{ marginBottom: 12 }}>
+            <div>
+              <div className="ntf-t">Could not load procurement data</div>
+              <div className="ntf-b">{loadError}</div>
+            </div>
+            <button className="ab sec" style={{ height: 32, fontSize: 12 }} onClick={loadAll}>Retry</button>
+          </div>
+        )}
 
         {/* ── Tab 0: Overview ──────────────────────────────────────────── */}
         {tab === 0 && (<>
@@ -171,7 +338,13 @@ export default function ProcDashboard() {
         {tab === 1 && (<>
           {supplierProfile ? (
             <>
-              <button className="ab sec" style={{ height: 28, fontSize: 11, marginBottom: 12, padding: '0 12px' }} onClick={() => setSupplierProfile(null)}>← All Suppliers</button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 8 }}>
+                <button className="ab sec" style={{ height: 28, fontSize: 11, padding: '0 12px' }} onClick={() => setSupplierProfile(null)}>← All Suppliers</button>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="ab sec" style={{ height: 28, fontSize: 11, padding: '0 12px' }} onClick={() => setDocsSupplierTarget(suppliersRaw.find((x) => x.id === supplierProfile.id) || supplierProfile)}>📄 Documents</button>
+                  <button className="ab sec" style={{ height: 28, fontSize: 11, padding: '0 12px' }} onClick={() => setEditSupplier(suppliersRaw.find((x) => x.id === supplierProfile.id) || supplierProfile)}>Edit</button>
+                </div>
+              </div>
               <div className="kg c4">
                 <div className="kc bl"><div className="kl">MTD Spend</div><div className="kv">${supplierProfile.spend.toLocaleString()}</div><div className="kd up">This month</div><div className="ki">💳</div></div>
                 <div className="kc gn"><div className="kl">YTD Spend</div><div className="kv">${supplierProfile.ytd.toLocaleString()}</div><div className="kd nt">Year to date</div><div className="ki">📊</div></div>
@@ -269,26 +442,37 @@ export default function ProcDashboard() {
             <select className="fsel" style={{ width: 150, height: 32, fontSize: 12 }} value={brandFilter} onChange={e => setBrandFilter(e.target.value)}>
               <option value="All Brands">All Brands</option><option value="Chicken Inn">Chicken Inn</option><option value="Pizza Inn">Pizza Inn</option><option value="Creamy Inn">Creamy Inn</option><option value="Nando's">Nando's</option><option value="Steers">Steers</option><option value="Roco Mamma's">Roco Mamma's</option><option value="Ocean Basket">Ocean Basket</option><option value="Hefelies">Hefelies</option><option value="Pastino's">Pastino's</option>
             </select>
-            <button className="ab pri" style={{ height: 34, fontSize: 12 }} onClick={() => addToast('ok', 'Exported', `${filteredProducts.length} products exported`)}>Export</button>
+            <button className="ab sec" style={{ height: 34, fontSize: 12 }} onClick={() => setManageCatsOpen(true)}>Manage Categories</button>
+            <button className="ab pri" style={{ height: 34, fontSize: 12 }} onClick={() => { setEditProduct(null); setProductModalOpen(true); }}>+ New Product</button>
+            <button className="ab sec" style={{ height: 34, fontSize: 12 }} onClick={() => addToast('ok', 'Exported', `${filteredProducts.length} products exported`)}>Export</button>
           </div>
           <table className="dt">
-            <thead><tr><th>Code</th><th>Product Name</th><th>Category</th><th>Department</th><th>Supplier</th><th>Price (USD)</th><th>Unit</th><th>Min Order</th><th>Brands</th></tr></thead>
+            <thead><tr><th>Code</th><th>Product Name</th><th>Category</th><th>Department</th><th>Supplier</th><th>Price (USD)</th><th>Unit</th><th>Min Order</th><th>Brands</th><th style={{ width: 110 }}>Action</th></tr></thead>
             <tbody>
               {filteredProducts.length === 0
-                ? <tr><td colSpan={9} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No products match filter</td></tr>
-                : filteredProducts.map(p => (
-                  <tr key={p.code}>
-                    <td><code style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--int)' }}>{p.code}</code></td>
-                    <td><strong>{p.name}</strong></td>
-                    <td><span style={{ fontSize: 11, fontWeight: 600, color: 'var(--int)', background: 'var(--info-bg)', padding: '2px 8px', border: '1px solid var(--int)' }}>{p.cat}</span></td>
-                    <td style={{ fontSize: 12, color: 'var(--ts)' }}>{p.dept}</td>
-                    <td style={{ fontSize: 12 }}>{p.supplier}</td>
-                    <td><strong style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{formatMoney(p.price, currency)}</strong></td>
-                    <td style={{ fontSize: 12, color: 'var(--ts)' }}>{p.unit}</td>
-                    <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{p.minOrder}</td>
-                    <td style={{ fontSize: 11, color: 'var(--ts)' }}>{p.brands}</td>
-                  </tr>
-                ))
+                ? <tr><td colSpan={10} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No products match filter</td></tr>
+                : filteredProducts.map(p => {
+                  const raw = productsRaw.find((x) => x.id === p.id) || { id: p.id, code: p.code, name: p.name };
+                  return (
+                    <tr key={p.id}>
+                      <td><code style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--int)' }}>{p.code}</code></td>
+                      <td><strong>{p.name}</strong></td>
+                      <td><span style={{ fontSize: 11, fontWeight: 600, color: 'var(--int)', background: 'var(--info-bg)', padding: '2px 8px', border: '1px solid var(--int)' }}>{p.cat}</span></td>
+                      <td style={{ fontSize: 12, color: 'var(--ts)' }}>{p.dept}</td>
+                      <td style={{ fontSize: 12 }}>{p.supplier}</td>
+                      <td><strong style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{formatMoney(p.price, currency)}</strong></td>
+                      <td style={{ fontSize: 12, color: 'var(--ts)' }}>{p.unit}</td>
+                      <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{p.minOrder}</td>
+                      <td style={{ fontSize: 11, color: 'var(--ts)' }}>{p.brands}</td>
+                      <td>
+                        <div className="ra">
+                          <button className="rb ed" onClick={() => { setEditProduct(raw); setProductModalOpen(false); }}>Edit</button>
+                          <button className="rb rv" onClick={() => setDeleteProductTarget({ id: raw.id, name: raw.name })}>Delete</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               }
             </tbody>
           </table>
@@ -434,45 +618,115 @@ export default function ProcDashboard() {
           </div>
           <div className="tbbar">
             <div className="tbt">Supplier Registry</div>
-            <button className="ab pri" style={{ height: 34, fontSize: 12 }} onClick={() => addToast('info', 'Supplier registration', 'Open the New Request form to register a supplier')}>+ Register Supplier</button>
+            <button className="ab pri" style={{ height: 34, fontSize: 12 }} onClick={() => { setEditSupplier(null); setSupplierModalOpen(true); }}>+ Register Supplier</button>
           </div>
           <table className="dt">
-            <thead><tr><th>Supplier</th><th>Category</th><th>InnBucks Wallet</th><th>Verified</th><th>Cert. Expiry</th><th>MTD Spend</th><th>Brands</th><th>Action</th></tr></thead>
+            <thead><tr><th>Supplier</th><th>Category</th><th>InnBucks Wallet</th><th>Status</th><th>Cert. Expiry</th><th>MTD Spend</th><th>Brands</th><th style={{ minWidth: 280 }}>Action</th></tr></thead>
             <tbody>
               {SUPPLIERS.length === 0 ? (
                 <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No data yet.</td></tr>
-              ) : SUPPLIERS.map(s => (
-                <tr key={s.name}>
-                  <td><strong>{s.name}</strong></td>
-                  <td style={{ fontSize: 12, color: 'var(--ts)' }}>{s.cat}</td>
-                  <td>
-                    {s.wallet
-                      ? <code style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--int)' }}>{s.wallet}</code>
-                      : <span style={{ color: 'var(--ts)', fontSize: 12 }}>—</span>
-                    }
-                  </td>
-                  <td>{s.verified ? <StatusTag type="active" label="VERIFIED" /> : <StatusTag type="pending" label="PENDING" />}</td>
-                  <td style={{ fontSize: 11, fontFamily: "'IBM Plex Mono',monospace", color: s.cert && new Date(s.cert) < new Date('2025-07-01') ? 'var(--er-t)' : 'var(--ts)' }}>
-                    {s.cert || '—'}
-                    {s.cert && new Date(s.cert) < new Date('2025-07-01') && <span style={{ color: 'var(--er)', marginLeft: 4 }}>⚠</span>}
-                  </td>
-                  <td><strong>{formatMoneyShort(s.spend, currency)}</strong></td>
-                  <td>{s.brands.map(([b, cls], i) => <span key={i} className={`bc2 ${cls}`} style={{ marginRight: 2, fontSize: 9 }}>{b[0]}{b.split(' ')[1]?.[0]||''}</span>)}</td>
-                  <td>
-                    <div className="ra">
-                      {!s.verified && <button className="rb ap" onClick={() => addToast('ok', `${s.name} verified`, 'Supplier is now active on the platform')}>Verify</button>}
-                      <button className="rb ed" onClick={() => { setSupplierProfile(s); setTab(1); }} title="View supplier profile">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                      </button>
-                      {s.cert && new Date(s.cert) < new Date('2025-07-01') && <button className="rb rv" onClick={() => addToast('wa', 'Cert renewal sent', `${s.name} notified to renew certification`)}>Renew Cert</button>}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              ) : SUPPLIERS.map(s => {
+                const raw = suppliersRaw.find((x) => x.id === s.id) || s;
+                const status = (s.status || '').toLowerCase();
+                const isPending = status === 'pending' || (!s.verified && status !== 'suspended' && status !== 'rejected');
+                const isSuspended = status === 'suspended';
+                const isActive = s.verified && !isSuspended;
+                const tagType = isSuspended ? 'over' : isActive ? 'active' : 'pending';
+                const tagLabel = isSuspended ? 'SUSPENDED' : isActive ? 'VERIFIED' : (status || 'PENDING').toUpperCase();
+                return (
+                  <tr key={s.id || s.name}>
+                    <td><strong>{s.name}</strong></td>
+                    <td style={{ fontSize: 12, color: 'var(--ts)' }}>{s.cat}</td>
+                    <td>
+                      {s.wallet
+                        ? <code style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--int)' }}>{s.wallet}</code>
+                        : <span style={{ color: 'var(--ts)', fontSize: 12 }}>—</span>
+                      }
+                    </td>
+                    <td><StatusTag type={tagType} label={tagLabel} /></td>
+                    <td style={{ fontSize: 11, fontFamily: "'IBM Plex Mono',monospace", color: s.cert && new Date(s.cert) < new Date('2025-07-01') ? 'var(--er-t)' : 'var(--ts)' }}>
+                      {s.cert || '—'}
+                      {s.cert && new Date(s.cert) < new Date('2025-07-01') && <span style={{ color: 'var(--er)', marginLeft: 4 }}>⚠</span>}
+                    </td>
+                    <td><strong>{formatMoneyShort(s.spend, currency)}</strong></td>
+                    <td>{s.brands.map(([b, cls], i) => <span key={i} className={`bc2 ${cls}`} style={{ marginRight: 2, fontSize: 9 }}>{b[0]}{b.split(' ')[1]?.[0]||''}</span>)}</td>
+                    <td>
+                      <div className="ra">
+                        {isPending && <button className="rb ap" onClick={() => handleVerifySupplier(s)}>Verify</button>}
+                        {isPending && <button className="rb rv" onClick={() => setRejectSupplierTarget(raw)}>Reject</button>}
+                        {isActive && <button className="rb rv" onClick={() => setSuspendSupplierTarget(raw)}>Suspend</button>}
+                        {isSuspended && <button className="rb ap" onClick={() => handleReactivateSupplier(s)}>Reactivate</button>}
+                        <button className="rb ed" onClick={() => setEditSupplier(raw)}>Edit</button>
+                        <button className="rb ed" onClick={() => setDocsSupplierTarget(raw)} title="Documents">Docs</button>
+                        <button className="rb ed" onClick={() => { setSupplierProfile(s); setTab(1); }} title="View profile">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                        </button>
+                        <button className="rb rv" onClick={() => setDeleteSupplierTarget({ id: s.id, name: s.name })}>Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </>)}
       </div>
+
+      {/* ── Procurement modals ────────────────────────────────────────── */}
+      <NewSupplierModal
+        open={supplierModalOpen}
+        supplier={editSupplier}
+        onClose={(changed) => {
+          setSupplierModalOpen(false);
+          setEditSupplier(null);
+          if (changed) loadAll();
+        }}
+      />
+      <RejectSupplierModal
+        supplier={rejectSupplierTarget}
+        onClose={(changed) => { setRejectSupplierTarget(null); if (changed) loadAll(); }}
+      />
+      <SuspendSupplierModal
+        supplier={suspendSupplierTarget}
+        onClose={(changed) => { setSuspendSupplierTarget(null); if (changed) loadAll(); }}
+      />
+      <ConfirmDeleteModal
+        open={!!deleteSupplierTarget}
+        title="Delete Supplier"
+        subtitle={deleteSupplierTarget?.name}
+        message={`Permanently remove “${deleteSupplierTarget?.name}” from the registry? Any historical references will remain in audit logs.`}
+        onConfirm={handleDeleteSupplier}
+        onClose={() => setDeleteSupplierTarget(null)}
+      />
+      <SupplierDocumentsModal
+        open={!!docsSupplierTarget}
+        supplier={docsSupplierTarget}
+        onClose={() => setDocsSupplierTarget(null)}
+      />
+      <ProcurementProductModal
+        open={productModalOpen}
+        product={editProduct}
+        categories={categoriesRaw}
+        onClose={(changed) => {
+          setProductModalOpen(false);
+          setEditProduct(null);
+          if (changed) loadAll();
+        }}
+      />
+      <ConfirmDeleteModal
+        open={!!deleteProductTarget}
+        title="Delete Product"
+        subtitle={deleteProductTarget?.name}
+        message={`Remove “${deleteProductTarget?.name}” from the catalogue?`}
+        onConfirm={handleDeleteProduct}
+        onClose={() => setDeleteProductTarget(null)}
+      />
+      <ManageCategoriesModal
+        open={manageCatsOpen}
+        categories={categoriesRaw}
+        onClose={() => setManageCatsOpen(false)}
+        onChanged={loadAll}
+      />
     </>
   );
 }
