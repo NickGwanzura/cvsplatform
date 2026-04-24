@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import StatusTag from '../components/shared/StatusTag';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
+import EndpointPendingBanner from '../components/shared/EndpointPendingBanner';
 import { ExceptionRequestModal, RequestDetailModal } from '../components/modals/AllModals';
 
 const REQUESTS = [];
@@ -21,6 +22,10 @@ export default function MgrDashboard() {
         ]} />
       </div>
       <div className="cnt">
+        <EndpointPendingBanner
+          feature="The shop requests workflow"
+          endpoints={['GET /api/v1/requests', 'POST /api/v1/requests', 'GET /api/v1/budgets']}
+        />
         <div className="kg c4">
           <div className="kc bl"><div className="kl">Monthly Budget</div><div className="kv">—</div><div className="kd nt">—</div><div className="ki">💳</div></div>
           <div className="kc rd"><div className="kl">Spent This Month</div><div className="kv">—</div><div className="kd nt">—</div><div className="ki">📊</div></div>

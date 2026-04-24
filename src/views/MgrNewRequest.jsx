@@ -1,25 +1,52 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
+import EndpointPendingBanner from '../components/shared/EndpointPendingBanner';
 import { SubmitRequestModal, NewSupplierModal } from '../components/modals/AllModals';
+import { listProcurementCategories, listSuppliers } from '../lib/cvsApi';
 
 const STEPS = ['Details', 'Supplier', 'Submit'];
-const CATEGORIES = ['Maintenance & Repairs', 'Cleaning Supplies', 'Stationery', 'Gas & Utilities', 'Emergency', 'Other'];
-const SUPPLIERS = [];
+// Fallback list shown if the categories endpoint is unreachable or empty.
+const CATEGORY_FALLBACK = ['Maintenance & Repairs', 'Cleaning Supplies', 'Stationery', 'Gas & Utilities', 'Emergency', 'Other'];
 
 export default function MgrNewRequest() {
   const { session, navigate, openModal, addToast, modals, closeModal } = useApp();
   const [step, setStep] = useState(0);
   const [showNewSupplier, setShowNewSupplier] = useState(false);
   const [showSubmit, setShowSubmit] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [metaError, setMetaError] = useState(false);
   const [form, setForm] = useState({
-    category: CATEGORIES[0],
+    category: CATEGORY_FALLBACK[0],
     amount: '',
     purpose: '',
     supplier: '',
     file: null,
   });
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      listProcurementCategories().catch(() => null),
+      listSuppliers().catch(() => null),
+    ]).then(([cats, sups]) => {
+      if (cancelled) return;
+      setCategories(Array.isArray(cats) ? cats : []);
+      setSuppliers(Array.isArray(sups) ? sups : []);
+      if (cats == null || sups == null) setMetaError(true);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const categoryOptions = categories.length > 0
+    ? categories.map((c) => c.name).filter(Boolean)
+    : CATEGORY_FALLBACK;
+  // Only verified/active suppliers are offered for new requests.
+  const supplierOptions = suppliers
+    .filter((s) => s.status === 'active' || s.status === 'approved')
+    .map((s) => ({ label: s.name, wallet: s.inbucks_number || '—', id: s.id }));
 
   const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: '' })); };
 
@@ -48,7 +75,7 @@ export default function MgrNewRequest() {
     addToast('ok', 'Request submitted for review', 'Forwarded to Brand Accountant');
   };
 
-  const selectedSupplier = SUPPLIERS.find(s => s.label === form.supplier);
+  const selectedSupplier = supplierOptions.find(s => s.label === form.supplier);
 
   return (
     <>
@@ -86,8 +113,11 @@ export default function MgrNewRequest() {
             <div className="fi">
               <label className="fl">Category</label>
               <select className="fsel" value={form.category} onChange={e => set('category', e.target.value)}>
-                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                {categoryOptions.map(c => <option key={c}>{c}</option>)}
               </select>
+              {categories.length === 0 && (
+                <div className="fh" style={{ fontSize: 11, color: 'var(--ts)' }}>Showing fallback list — live categories couldn't be loaded.</div>
+              )}
             </div>
             <div className="fi">
               <label className="fl">Amount (USD)</label>
@@ -112,8 +142,10 @@ export default function MgrNewRequest() {
               <label className="fl">Select Supplier</label>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
                 <select className="fsel" style={{ flex: 1 }} value={form.supplier} onChange={e => set('supplier', e.target.value)}>
-                  <option value="">— Choose verified supplier —</option>
-                  {SUPPLIERS.map(s => <option key={s.label} value={s.label}>{s.label}</option>)}
+                  <option value="">
+                    {supplierOptions.length === 0 ? '— No verified suppliers available —' : '— Choose verified supplier —'}
+                  </option>
+                  {supplierOptions.map(s => <option key={s.id} value={s.label}>{s.label}</option>)}
                 </select>
                 <button className="ab gho" style={{ height: 34, whiteSpace: 'nowrap' }} onClick={() => setShowNewSupplier(true)}>+ New Supplier</button>
               </div>
@@ -146,6 +178,10 @@ export default function MgrNewRequest() {
         {/* Step 2 — Review */}
         {step === 2 && (
           <div>
+            <EndpointPendingBanner
+              feature="Submitting a request"
+              endpoints={['POST /api/v1/requests']}
+            />
             <div style={{ background: 'var(--l1)', border: '1px solid var(--bs)', padding: 16, marginBottom: 13 }}>
               <div style={{ fontSize: 11, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace", textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>Request Summary</div>
               {[

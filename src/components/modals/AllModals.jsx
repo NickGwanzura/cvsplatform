@@ -1065,6 +1065,7 @@ export function PermissionsModal({ open, onClose }) {
   const [perms, setPerms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
+  const [errDetail, setErrDetail] = useState('');
   const [filter, setFilter] = useState('');
 
   useEffect(() => {
@@ -1072,9 +1073,19 @@ export function PermissionsModal({ open, onClose }) {
     let cancelled = false;
     setLoading(true);
     setErr('');
+    setErrDetail('');
     listPermissions()
       .then((list) => !cancelled && setPerms(Array.isArray(list) ? list : []))
-      .catch((e) => !cancelled && setErr(extractApiError(e, 'Failed to load permissions')))
+      .catch((e) => {
+        if (cancelled) return;
+        const status = e?.response?.status;
+        if (status >= 500) {
+          setErr('The permissions service is temporarily unavailable. The backend team has been notified.');
+          setErrDetail(extractApiError(e, ''));
+        } else {
+          setErr(extractApiError(e, 'Failed to load permissions'));
+        }
+      })
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
   }, [open]);
@@ -1101,7 +1112,20 @@ export function PermissionsModal({ open, onClose }) {
       footer={<button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Close</button>}
     >
       {loading && <div style={{ color: 'var(--ts)', fontSize: 12 }}>Loading…</div>}
-      {err && !loading && <div className="ntf er"><div><div className="ntf-t">Could not load permissions</div><div className="ntf-b">{err}</div></div></div>}
+      {err && !loading && (
+        <div className="ntf er">
+          <div>
+            <div className="ntf-t">Could not load permissions</div>
+            <div className="ntf-b">{err}</div>
+            {errDetail && (
+              <details style={{ marginTop: 6, fontSize: 11, color: 'var(--ts)' }}>
+                <summary style={{ cursor: 'pointer' }}>Technical details</summary>
+                <div style={{ marginTop: 4, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{errDetail}</div>
+              </details>
+            )}
+          </div>
+        </div>
+      )}
       {!loading && !err && (
         <>
           <input className="srch" placeholder="Filter permissions…" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ marginBottom: 12, width: '100%' }} />

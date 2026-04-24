@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import StatusTag from '../components/shared/StatusTag';
 import LineChart from '../components/shared/LineChart';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
+import EndpointPendingBanner from '../components/shared/EndpointPendingBanner';
 import { PayModal, BatchPayModal, ExceptionApproveModal, StatementModal, RejectModal } from '../components/modals/AllModals';
 
 const APPROVALS = [];
@@ -63,6 +64,10 @@ export default function BmDashboard() {
 
         {/* ── Tab 0: Approvals ─────────────────────────────────────────── */}
         {tab === 0 && (<>
+          <EndpointPendingBanner
+            feature="The approvals queue"
+            endpoints={['GET /api/v1/approvals', 'POST /api/v1/payments', 'POST /api/v1/approvals/:id/reject']}
+          />
           <div className="kg c4">
             <div className="kc yw"><div className="kl">Pending Approvals</div><div className="kv">{APPROVALS.length}</div><div className="kd nt">Validated by Accountant</div><div className="ki">⏳</div></div>
             <div className="kc bl"><div className="kl">Total to Disburse</div><div className="kv">${APPROVALS.reduce((s,a) => s+a.rawAmt, 0).toLocaleString()}</div><div className="kd nt">If all approved</div><div className="ki">💳</div></div>
@@ -113,6 +118,10 @@ export default function BmDashboard() {
 
         {/* ── Tab 1: InnBucks Sales ─────────────────────────────────────── */}
         {tab === 1 && (<>
+          <EndpointPendingBanner
+            feature="Live transactions, daily sales and reconciliation"
+            endpoints={['GET /api/v1/innbucks', 'GET /api/v1/daily-sales', 'GET /api/v1/reconciliation']}
+          />
           <div className="kg c4">
             <div className="kc gn"><div className="kl">Today's Sales</div><div className="kv">${totalSales.toFixed(2)}</div><div className="kd up">↑ {INNBUCKS.filter(r => r.status === 'settled').length} transactions settled</div><div className="ki">📈</div></div>
             <div className="kc bl"><div className="kl">Settled</div><div className="kv">{INNBUCKS.filter(r => r.status === 'settled').length}</div><div className="kd up">Fully processed</div><div className="ki">✓</div></div>
