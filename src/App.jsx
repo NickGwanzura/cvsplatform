@@ -1,6 +1,7 @@
 import { AppProvider, useApp } from './context/AppContext';
 import LoginPage from './components/Login/LoginPage';
 import ResetPasswordPage from './components/Login/ResetPasswordPage';
+import AcceptInvitePage from './components/Login/AcceptInvitePage';
 import AppShell from './components/Layout/AppShell';
 import ToastContainer from './components/shared/ToastContainer';
 import BetaPill from './components/shared/BetaPill';
@@ -15,6 +16,15 @@ function Inner() {
     return (
       <>
         <ResetPasswordPage />
+        <ToastContainer />
+        <BetaPill />
+      </>
+    );
+  }
+  if (path === '/accept-invite') {
+    return (
+      <>
+        <AcceptInvitePage />
         <ToastContainer />
         <BetaPill />
       </>

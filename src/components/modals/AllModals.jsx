@@ -35,6 +35,19 @@ import {
   approveSupplierDocument,
   rejectSupplierDocument,
   deleteSupplierDocument,
+  showUser,
+  showInvitation,
+  showSupplier,
+  showProcurementProduct,
+  showProcurementCategory,
+  listSupplierProducts,
+  linkSupplierProduct,
+  updateSupplierProduct,
+  unlinkSupplierProduct,
+  syncSupplierBrands,
+  listProcurementProducts,
+  changePassword,
+  listPermissions,
 } from '../../lib/cvsApi';
 
 function extractApiError(err, fallback = 'Request failed') {
@@ -548,6 +561,575 @@ export function ShopDetailModal({ shopId, onClose }) {
   );
 }
 
+/* ── User Detail Modal (read-only) ──────────────────────────────────────── */
+export function UserDetailModal({ userId, onClose }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    setLoading(true);
+    setErr('');
+    showUser(userId)
+      .then((u) => !cancelled && setUser(u || null))
+      .catch((e) => !cancelled && setErr(extractApiError(e, 'Failed to load user')))
+      .finally(() => !cancelled && setLoading(false));
+    return () => { cancelled = true; setUser(null); };
+  }, [userId]);
+
+  if (!userId) return null;
+  const assignments = user?.assignments || [];
+
+  return (
+    <CvsModal
+      open={!!userId}
+      onClose={onClose}
+      title={user?.full_name || 'User'}
+      subtitle={user?.email || 'User details'}
+      size="lg"
+      footer={<button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Close</button>}
+    >
+      {loading && <div style={{ color: 'var(--ts)', fontSize: 12 }}>Loading…</div>}
+      {err && !loading && <div className="ntf er"><div><div className="ntf-t">Could not load user</div><div className="ntf-b">{err}</div></div></div>}
+      {user && !loading && (
+        <>
+          <div className="fg">
+            <div className="fi"><label className="fl">Full Name</label><div style={{ fontWeight: 600 }}>{user.full_name || '—'}</div></div>
+            <div className="fi"><label className="fl">Email</label><div>{user.email || '—'}</div></div>
+            <div className="fi"><label className="fl">Phone</label><div>{user.phone || '—'}</div></div>
+            <div className="fi"><label className="fl">Status</label><div><StatusTag type={user.status || 'active'} /></div></div>
+            {user.last_login_at && (
+              <div className="fi"><label className="fl">Last Login</label><div style={{ fontSize: 12, color: 'var(--ts)' }}>{new Date(user.last_login_at).toLocaleString()}</div></div>
+            )}
+            {user.created_at && (
+              <div className="fi"><label className="fl">Created</label><div style={{ fontSize: 12, color: 'var(--ts)' }}>{new Date(user.created_at).toLocaleString()}</div></div>
+            )}
+          </div>
+          <div className="tbbar" style={{ marginTop: 20 }}>
+            <div className="tbt">Role Assignments ({assignments.length})</div>
+          </div>
+          <table className="dt">
+            <thead><tr><th>Role</th><th>Brand</th><th>Shop</th><th>Active</th></tr></thead>
+            <tbody>
+              {assignments.length === 0 ? (
+                <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--ts)', padding: 16 }}>No role assignments.</td></tr>
+              ) : assignments.map((a) => (
+                <tr key={a.id || `${a.role_id}-${a.brand_id}-${a.shop_id}`}>
+                  <td>{a.role?.name || '—'}</td>
+                  <td>{a.brand?.name || '—'}</td>
+                  <td>{a.shop?.name || '—'}</td>
+                  <td>{a.is_active ? <StatusTag type="active" label="ACTIVE" /> : <span style={{ color: 'var(--ts)', fontSize: 12 }}>inactive</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+    </CvsModal>
+  );
+}
+
+/* ── Invitation Detail Modal (read-only) ────────────────────────────────── */
+export function InvitationDetailModal({ invitationId, onClose }) {
+  const [inv, setInv] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if (!invitationId) return;
+    let cancelled = false;
+    setLoading(true);
+    setErr('');
+    showInvitation(invitationId)
+      .then((i) => !cancelled && setInv(i || null))
+      .catch((e) => !cancelled && setErr(extractApiError(e, 'Failed to load invitation')))
+      .finally(() => !cancelled && setLoading(false));
+    return () => { cancelled = true; setInv(null); };
+  }, [invitationId]);
+
+  if (!invitationId) return null;
+  const status = inv?.revoked_at ? 'rejected' : inv?.accepted_at ? 'active' : (inv?.expires_at && new Date(inv.expires_at) < new Date()) ? 'exception' : 'pending';
+
+  return (
+    <CvsModal
+      open={!!invitationId}
+      onClose={onClose}
+      title={inv?.full_name || 'Invitation'}
+      subtitle={inv?.email || 'Invitation details'}
+      size="md"
+      footer={<button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Close</button>}
+    >
+      {loading && <div style={{ color: 'var(--ts)', fontSize: 12 }}>Loading…</div>}
+      {err && !loading && <div className="ntf er"><div><div className="ntf-t">Could not load invitation</div><div className="ntf-b">{err}</div></div></div>}
+      {inv && !loading && (
+        <div className="fg">
+          <div className="fi"><label className="fl">Name</label><div style={{ fontWeight: 600 }}>{inv.full_name || '—'}</div></div>
+          <div className="fi"><label className="fl">Email</label><div>{inv.email || '—'}</div></div>
+          <div className="fi"><label className="fl">Role</label><div>{inv.role?.name || '—'}</div></div>
+          <div className="fi"><label className="fl">Brand</label><div>{inv.brand?.name || '—'}</div></div>
+          <div className="fi"><label className="fl">Shop</label><div>{inv.shop?.name || '—'}</div></div>
+          <div className="fi"><label className="fl">Status</label><div><StatusTag type={status} /></div></div>
+          {inv.note && (
+            <div className="fi full"><label className="fl">Note</label><div style={{ fontSize: 12 }}>{inv.note}</div></div>
+          )}
+          {inv.expires_at && (
+            <div className="fi"><label className="fl">Expires</label><div style={{ fontSize: 12, color: 'var(--ts)' }}>{new Date(inv.expires_at).toLocaleString()}</div></div>
+          )}
+          {inv.accepted_at && (
+            <div className="fi"><label className="fl">Accepted</label><div style={{ fontSize: 12, color: 'var(--ok-t)' }}>{new Date(inv.accepted_at).toLocaleString()}</div></div>
+          )}
+          {inv.revoked_at && (
+            <div className="fi"><label className="fl">Revoked</label><div style={{ fontSize: 12, color: 'var(--er-t)' }}>{new Date(inv.revoked_at).toLocaleString()}</div></div>
+          )}
+        </div>
+      )}
+    </CvsModal>
+  );
+}
+
+/* ── Supplier Detail Modal (read-only) ──────────────────────────────────── */
+export function SupplierDetailModal({ supplierId, onClose }) {
+  const [supplier, setSupplier] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if (!supplierId) return;
+    let cancelled = false;
+    setLoading(true);
+    setErr('');
+    showSupplier(supplierId)
+      .then((s) => !cancelled && setSupplier(s || null))
+      .catch((e) => !cancelled && setErr(extractApiError(e, 'Failed to load supplier')))
+      .finally(() => !cancelled && setLoading(false));
+    return () => { cancelled = true; setSupplier(null); };
+  }, [supplierId]);
+
+  if (!supplierId) return null;
+  const brands = supplier?.brands || [];
+
+  return (
+    <CvsModal
+      open={!!supplierId}
+      onClose={onClose}
+      title={supplier?.name || 'Supplier'}
+      subtitle={supplier?.code ? `Code: ${supplier.code}` : 'Supplier details'}
+      size="lg"
+      footer={<button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Close</button>}
+    >
+      {loading && <div style={{ color: 'var(--ts)', fontSize: 12 }}>Loading…</div>}
+      {err && !loading && <div className="ntf er"><div><div className="ntf-t">Could not load supplier</div><div className="ntf-b">{err}</div></div></div>}
+      {supplier && !loading && (
+        <>
+          <div className="fg">
+            <div className="fi"><label className="fl">Name</label><div style={{ fontWeight: 600 }}>{supplier.name || '—'}</div></div>
+            <div className="fi"><label className="fl">Code</label><div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{supplier.code || '—'}</div></div>
+            <div className="fi"><label className="fl">Scope</label><div>{supplier.scope_type || '—'}</div></div>
+            <div className="fi"><label className="fl">Status</label><div><StatusTag type={supplier.status || 'pending'} /></div></div>
+            <div className="fi"><label className="fl">Contact Person</label><div>{supplier.contact_person || '—'}</div></div>
+            <div className="fi"><label className="fl">Phone</label><div style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{supplier.phone || '—'}</div></div>
+            <div className="fi"><label className="fl">Email</label><div>{supplier.email || '—'}</div></div>
+            <div className="fi"><label className="fl">InnBucks</label><div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{supplier.inbucks_number || '—'}</div></div>
+            <div className="fi full"><label className="fl">Address</label><div>{supplier.address || '—'}</div></div>
+            {supplier.cert_expiry && (
+              <div className="fi"><label className="fl">Cert Expiry</label><div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{supplier.cert_expiry}</div></div>
+            )}
+          </div>
+          {supplier.scope_type === 'restricted' && (
+            <>
+              <div className="tbbar" style={{ marginTop: 20 }}>
+                <div className="tbt">Brands served ({brands.length})</div>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: 8 }}>
+                {brands.length === 0
+                  ? <span style={{ fontSize: 12, color: 'var(--ts)' }}>No brands linked.</span>
+                  : brands.map((b) => <BrandChip key={b.id || b} brand={typeof b === 'string' ? b : b.name} />)
+                }
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </CvsModal>
+  );
+}
+
+/* ── Product Detail Modal (read-only) ───────────────────────────────────── */
+export function ProductDetailModal({ productId, onClose }) {
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if (!productId) return;
+    let cancelled = false;
+    setLoading(true);
+    setErr('');
+    showProcurementProduct(productId)
+      .then((p) => !cancelled && setProduct(p || null))
+      .catch((e) => !cancelled && setErr(extractApiError(e, 'Failed to load product')))
+      .finally(() => !cancelled && setLoading(false));
+    return () => { cancelled = true; setProduct(null); };
+  }, [productId]);
+
+  if (!productId) return null;
+
+  return (
+    <CvsModal
+      open={!!productId}
+      onClose={onClose}
+      title={product?.name || 'Product'}
+      subtitle={product?.code ? `Code: ${product.code}` : 'Product details'}
+      size="md"
+      footer={<button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Close</button>}
+    >
+      {loading && <div style={{ color: 'var(--ts)', fontSize: 12 }}>Loading…</div>}
+      {err && !loading && <div className="ntf er"><div><div className="ntf-t">Could not load product</div><div className="ntf-b">{err}</div></div></div>}
+      {product && !loading && (
+        <div className="fg">
+          <div className="fi"><label className="fl">Name</label><div style={{ fontWeight: 600 }}>{product.name || '—'}</div></div>
+          <div className="fi"><label className="fl">Code</label><div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{product.code || '—'}</div></div>
+          <div className="fi"><label className="fl">Category</label><div>{product.category?.name || '—'}</div></div>
+          <div className="fi"><label className="fl">Unit</label><div>{product.unit || '—'}</div></div>
+          {product.description && (
+            <div className="fi full"><label className="fl">Description</label><div style={{ fontSize: 12 }}>{product.description}</div></div>
+          )}
+          {product.created_at && (
+            <div className="fi"><label className="fl">Created</label><div style={{ fontSize: 12, color: 'var(--ts)' }}>{new Date(product.created_at).toLocaleString()}</div></div>
+          )}
+        </div>
+      )}
+    </CvsModal>
+  );
+}
+
+/* ── Category Detail Modal (read-only) ──────────────────────────────────── */
+export function CategoryDetailModal({ categoryId, onClose }) {
+  const [cat, setCat] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if (!categoryId) return;
+    let cancelled = false;
+    setLoading(true);
+    setErr('');
+    showProcurementCategory(categoryId)
+      .then((c) => !cancelled && setCat(c || null))
+      .catch((e) => !cancelled && setErr(extractApiError(e, 'Failed to load category')))
+      .finally(() => !cancelled && setLoading(false));
+    return () => { cancelled = true; setCat(null); };
+  }, [categoryId]);
+
+  if (!categoryId) return null;
+
+  return (
+    <CvsModal
+      open={!!categoryId}
+      onClose={onClose}
+      title={cat?.name || 'Category'}
+      subtitle={cat?.code ? `Code: ${cat.code}` : 'Category details'}
+      size="sm"
+      footer={<button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Close</button>}
+    >
+      {loading && <div style={{ color: 'var(--ts)', fontSize: 12 }}>Loading…</div>}
+      {err && !loading && <div className="ntf er"><div><div className="ntf-t">Could not load category</div><div className="ntf-b">{err}</div></div></div>}
+      {cat && !loading && (
+        <div className="fg">
+          <div className="fi"><label className="fl">Name</label><div style={{ fontWeight: 600 }}>{cat.name || '—'}</div></div>
+          <div className="fi"><label className="fl">Code</label><div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{cat.code || '—'}</div></div>
+          {cat.description && (
+            <div className="fi full"><label className="fl">Description</label><div style={{ fontSize: 12 }}>{cat.description}</div></div>
+          )}
+        </div>
+      )}
+    </CvsModal>
+  );
+}
+
+/* ── Supplier Products Modal (list + link + update price + unlink) ──────── */
+export function SupplierProductsModal({ supplier, onClose }) {
+  const { addToast } = useApp();
+  const [links, setLinks] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+  const [linkProductId, setLinkProductId] = useState('');
+  const [editingPrice, setEditingPrice] = useState({}); // { [linkId]: number }
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    if (!supplier?.id) return;
+    setLoading(true);
+    setErr('');
+    try {
+      const [linkList, productList] = await Promise.all([
+        listSupplierProducts(supplier.id).catch(() => []),
+        listProcurementProducts().catch(() => []),
+      ]);
+      setLinks(Array.isArray(linkList) ? linkList : []);
+      setProducts(Array.isArray(productList) ? productList : []);
+    } catch (e) {
+      setErr(extractApiError(e, 'Failed to load supplier products'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (supplier?.id) load();
+    else { setLinks([]); setProducts([]); }
+  }, [supplier?.id]);
+
+  if (!supplier) return null;
+
+  const linkedProductIds = new Set(links.map((l) => l.product_id || l.product?.id));
+  const availableProducts = products.filter((p) => !linkedProductIds.has(p.id));
+
+  const addLink = async () => {
+    if (!linkProductId) return;
+    setSaving(true);
+    try {
+      await linkSupplierProduct(supplier.id, linkProductId);
+      addToast('ok', 'Product linked', 'Supplier can now fulfil this product');
+      setLinkProductId('');
+      await load();
+    } catch (e) {
+      addToast('er', 'Link failed', extractApiError(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const savePrice = async (link) => {
+    const price = editingPrice[link.id];
+    if (price == null || price === '') return;
+    setSaving(true);
+    try {
+      await updateSupplierProduct(supplier.id, link.product_id || link.product?.id, { default_price: Number(price) });
+      addToast('ok', 'Price updated', `Default price: ${price}`);
+      setEditingPrice((m) => { const { [link.id]: _, ...rest } = m; return rest; });
+      await load();
+    } catch (e) {
+      addToast('er', 'Update failed', extractApiError(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeLink = async (link) => {
+    setSaving(true);
+    try {
+      await unlinkSupplierProduct(supplier.id, link.product_id || link.product?.id);
+      addToast('ok', 'Product unlinked', 'Removed from supplier');
+      await load();
+    } catch (e) {
+      addToast('er', 'Unlink failed', extractApiError(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <CvsModal
+      open={!!supplier}
+      onClose={onClose}
+      title={`${supplier.name} — Products`}
+      subtitle={`Manage the products this supplier can fulfil (${links.length})`}
+      size="lg"
+      footer={<button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Close</button>}
+    >
+      {err && <div className="ntf er"><div><div className="ntf-t">Could not load</div><div className="ntf-b">{err}</div></div></div>}
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <select
+          className="fsel"
+          style={{ flex: 1 }}
+          value={linkProductId}
+          onChange={(e) => setLinkProductId(e.target.value)}
+          disabled={saving || availableProducts.length === 0}
+        >
+          <option value="">
+            {availableProducts.length === 0 ? 'All products already linked' : 'Select a product to link…'}
+          </option>
+          {availableProducts.map((p) => (
+            <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
+          ))}
+        </select>
+        <button className="ab pri" style={{ height: 34, padding: '0 14px', fontSize: 12 }} disabled={!linkProductId || saving} onClick={addLink}>+ Link</button>
+      </div>
+
+      <table className="dt">
+        <thead><tr><th>Code</th><th>Product</th><th>Unit</th><th>Default Price</th><th style={{ width: 160 }}>Action</th></tr></thead>
+        <tbody>
+          {loading && links.length === 0 ? (
+            <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ts)', padding: 16 }}>Loading…</td></tr>
+          ) : links.length === 0 ? (
+            <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ts)', padding: 16 }}>No products linked yet.</td></tr>
+          ) : links.map((l) => {
+            const p = l.product || products.find((x) => x.id === l.product_id) || {};
+            const editing = editingPrice[l.id] != null;
+            return (
+              <tr key={l.id}>
+                <td><code style={{ color: 'var(--info)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>{p.code || l.product?.code || '—'}</code></td>
+                <td><strong>{p.name || l.product?.name || '—'}</strong></td>
+                <td style={{ fontSize: 12, color: 'var(--ts)' }}>{p.unit || '—'}</td>
+                <td>
+                  {editing ? (
+                    <input type="number" className="fin" style={{ height: 26, width: 100 }} value={editingPrice[l.id]} onChange={(e) => setEditingPrice((m) => ({ ...m, [l.id]: e.target.value }))} />
+                  ) : (
+                    <strong style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{l.default_price != null ? Number(l.default_price).toFixed(2) : '—'}</strong>
+                  )}
+                </td>
+                <td>
+                  <div className="ra">
+                    {editing ? (
+                      <>
+                        <button className="rb ap" onClick={() => savePrice(l)} disabled={saving}>Save</button>
+                        <button className="rb rv" onClick={() => setEditingPrice((m) => { const { [l.id]: _, ...rest } = m; return rest; })}>Cancel</button>
+                      </>
+                    ) : (
+                      <>
+                        <button className="rb ed" onClick={() => setEditingPrice((m) => ({ ...m, [l.id]: l.default_price ?? '' }))}>Edit price</button>
+                        <button className="rb rv" onClick={() => removeLink(l)} disabled={saving}>Unlink</button>
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </CvsModal>
+  );
+}
+
+/* ── Change Password Modal ──────────────────────────────────────────────── */
+export function ChangePasswordModal({ open, onClose }) {
+  const { addToast } = useApp();
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) { setCurrent(''); setNext(''); setConfirm(''); }
+  }, [open]);
+
+  const valid = current && next.length >= 8 && next === confirm;
+
+  const submit = async () => {
+    if (!valid || saving) return;
+    setSaving(true);
+    try {
+      await changePassword({ current_password: current, password: next, password_confirmation: confirm });
+      addToast('ok', 'Password updated', 'Use your new password next time you sign in.');
+      onClose?.();
+    } catch (err) {
+      addToast('er', 'Update failed', extractApiError(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <CvsModal
+      open={open}
+      onClose={onClose}
+      title="Change Password"
+      subtitle="Enter your current password, then choose a new one"
+      size="sm"
+      footer={<>
+        <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Cancel</button>
+        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} disabled={!valid || saving} onClick={submit}>{saving ? 'Updating…' : 'Update password'}</button>
+      </>}
+    >
+      <div className="fg">
+        <div className="fi full"><label className="fl">Current password</label><input className="fin" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} /></div>
+        <div className="fi full"><label className="fl">New password</label><input className="fin" type="password" autoComplete="new-password" minLength={8} value={next} onChange={(e) => setNext(e.target.value)} /><div className="fh">Minimum 8 characters.</div></div>
+        <div className="fi full"><label className="fl">Confirm new password</label><input className="fin" type="password" autoComplete="new-password" minLength={8} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+          {confirm && next !== confirm && <div className="fh" style={{ color: 'var(--er-t)' }}>Passwords don't match.</div>}
+        </div>
+      </div>
+    </CvsModal>
+  );
+}
+
+/* ── Permissions Modal (read-only list) ─────────────────────────────────── */
+export function PermissionsModal({ open, onClose }) {
+  const [perms, setPerms] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+  const [filter, setFilter] = useState('');
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setLoading(true);
+    setErr('');
+    listPermissions()
+      .then((list) => !cancelled && setPerms(Array.isArray(list) ? list : []))
+      .catch((e) => !cancelled && setErr(extractApiError(e, 'Failed to load permissions')))
+      .finally(() => !cancelled && setLoading(false));
+    return () => { cancelled = true; };
+  }, [open]);
+
+  if (!open) return null;
+
+  const filtered = filter
+    ? perms.filter((p) => [p.name, p.code, p.description].some((v) => String(v || '').toLowerCase().includes(filter.toLowerCase())))
+    : perms;
+
+  const grouped = filtered.reduce((acc, p) => {
+    const key = p.group || p.module || (p.code || '').split('.')[0] || 'Other';
+    (acc[key] ||= []).push(p);
+    return acc;
+  }, {});
+
+  return (
+    <CvsModal
+      open={open}
+      onClose={onClose}
+      title="System Permissions"
+      subtitle={`${perms.length} permission${perms.length === 1 ? '' : 's'} defined`}
+      size="lg"
+      footer={<button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Close</button>}
+    >
+      {loading && <div style={{ color: 'var(--ts)', fontSize: 12 }}>Loading…</div>}
+      {err && !loading && <div className="ntf er"><div><div className="ntf-t">Could not load permissions</div><div className="ntf-b">{err}</div></div></div>}
+      {!loading && !err && (
+        <>
+          <input className="srch" placeholder="Filter permissions…" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ marginBottom: 12, width: '100%' }} />
+          {Object.keys(grouped).length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--ts)', padding: 20, fontSize: 12 }}>No permissions match.</div>
+          ) : Object.entries(grouped).map(([group, items]) => (
+            <div key={group} style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ts)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>{group}</div>
+              <table className="dt">
+                <thead><tr><th>Code</th><th>Name</th><th>Description</th></tr></thead>
+                <tbody>
+                  {items.map((p) => (
+                    <tr key={p.id || p.code}>
+                      <td><code style={{ color: 'var(--info)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>{p.code || '—'}</code></td>
+                      <td><strong>{p.name || '—'}</strong></td>
+                      <td style={{ fontSize: 12, color: 'var(--ts)' }}>{p.description || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+        </>
+      )}
+    </CvsModal>
+  );
+}
+
 /* ── New / Edit Supplier Modal ──────────────────────────────────────────── */
 const emptySupplier = {
   name: '', code: '', scope_type: 'global',
@@ -561,6 +1143,20 @@ export function NewSupplierModal({ open, supplier = null, onClose }) {
   const isOpen = editing ? !!supplier : !!open;
   const [form, setForm] = useState(emptySupplier);
   const [saving, setSaving] = useState(false);
+  const [brands, setBrands] = useState([]);
+  const [brandIds, setBrandIds] = useState([]);
+  const initialBrandIds = (supplier?.brands || [])
+    .map((b) => (typeof b === 'string' ? b : b?.id))
+    .filter(Boolean);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    listBrands()
+      .then((list) => !cancelled && setBrands(Array.isArray(list) ? list : []))
+      .catch(() => !cancelled && setBrands([]));
+    return () => { cancelled = true; };
+  }, [isOpen]);
 
   useEffect(() => {
     if (editing) {
@@ -575,13 +1171,17 @@ export function NewSupplierModal({ open, supplier = null, onClose }) {
         inbucks_number: supplier.inbucks_number || '',
         cert_expiry: supplier.cert_expiry || '',
       });
+      setBrandIds(initialBrandIds);
     } else if (isOpen) {
       setForm(emptySupplier);
+      setBrandIds([]);
     }
   }, [supplier, editing, isOpen]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const valid = form.name.trim().length > 0;
+  const toggleBrand = (id) =>
+    setBrandIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
 
   const close = (changed) => {
     onClose?.(changed);
@@ -601,12 +1201,21 @@ export function NewSupplierModal({ open, supplier = null, onClose }) {
         inbucks_number: form.inbucks_number.trim() || null,
         cert_expiry: form.cert_expiry || null,
       };
+      if (form.scope_type === 'restricted') payload.brand_ids = brandIds;
+      let id;
       if (editing) {
         await updateSupplier(supplier.id, payload);
+        id = supplier.id;
         addToast('ok', 'Supplier updated', payload.name);
       } else {
-        await createSupplier(payload);
+        const created = await createSupplier(payload);
+        id = created?.id || created?.data?.id;
         addToast('ok', 'Supplier registered', `${payload.name} — awaiting verification`);
+      }
+      // For edits, explicitly sync the pivot — handles the case where scope
+      // flipped from restricted → global (clears brands) or vice versa.
+      if (editing && id) {
+        await syncSupplierBrands(id, form.scope_type === 'restricted' ? brandIds : []);
       }
       close(true);
     } catch (err) {
@@ -648,6 +1257,25 @@ export function NewSupplierModal({ open, supplier = null, onClose }) {
         <div className="fi"><label className="fl">Certification Expiry</label><input className="fin" type="date" value={form.cert_expiry} onChange={(e) => set('cert_expiry', e.target.value)} /></div>
         <div className="fi full"><label className="fl">Business Address</label><input className="fin" value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="Street address, City" /></div>
       </div>
+      {form.scope_type === 'restricted' && (
+        <div style={{ marginTop: 14 }}>
+          <label className="fl">Brands this supplier serves</label>
+          {brands.length === 0 ? (
+            <div style={{ fontSize: 11, color: 'var(--ts)', padding: 8 }}>Loading brands…</div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginTop: 6 }}>
+              {brands.map((b) => (
+                <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', padding: '4px 6px', background: brandIds.includes(b.id) ? 'var(--info-bg)' : 'transparent', border: '1px solid var(--bs)' }}>
+                  <input type="checkbox" checked={brandIds.includes(b.id)} onChange={() => toggleBrand(b.id)} />
+                  <span style={{ fontWeight: 600 }}>{b.name}</span>
+                  <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: 'var(--ts)' }}>{b.code}</span>
+                </label>
+              ))}
+            </div>
+          )}
+          <div className="fh" style={{ marginTop: 4, fontSize: 11, color: 'var(--ts)' }}>Restricted suppliers only serve the brands selected here.</div>
+        </div>
+      )}
       {!editing && (
         <div style={{ marginTop: 11, padding: 10, background: 'var(--info-bg)', borderLeft: '3px solid var(--int)' }}>
           <div style={{ fontSize: 11, color: 'var(--info)' }}>Procurement will verify supplier credentials and activate within 24–48 hours.</div>
@@ -1453,6 +2081,7 @@ export function ManageCategoriesModal({ open, categories = [], onClose, onChange
   const { addToast } = useApp();
   const [editing, setEditing] = useState(null); // category object or { _new: true }
   const [deleting, setDeleting] = useState(null);
+  const [viewingId, setViewingId] = useState(null);
 
   if (!open) return null;
 
@@ -1492,6 +2121,7 @@ export function ManageCategoriesModal({ open, categories = [], onClose, onChange
                   <td><strong>{c.name}</strong></td>
                   <td>
                     <div className="ra">
+                      <button className="rb vw" onClick={() => setViewingId(c.id)}>View</button>
                       <button className="rb ed" onClick={() => setEditing(c)}>Edit</button>
                       <button className="rb rv" onClick={() => setDeleting(c)}>Delete</button>
                     </div>
@@ -1502,6 +2132,8 @@ export function ManageCategoriesModal({ open, categories = [], onClose, onChange
           </table>
         )}
       </CvsModal>
+
+      <CategoryDetailModal categoryId={viewingId} onClose={() => setViewingId(null)} />
 
       <ProcurementCategoryModal
         open={editing?._new ? true : false}

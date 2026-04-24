@@ -12,6 +12,9 @@ import {
   ShopEditModal,
   BrandDetailModal,
   ShopDetailModal,
+  UserDetailModal,
+  InvitationDetailModal,
+  PermissionsModal,
 } from '../components/modals/AllModals';
 import {
   listUsers,
@@ -60,6 +63,9 @@ export default function AdminDashboard() {
   const [editShop, setEditShop] = useState(null);
   const [viewBrandId, setViewBrandId] = useState(null);
   const [viewShopId, setViewShopId] = useState(null);
+  const [viewUserId, setViewUserId] = useState(null);
+  const [viewInvitationId, setViewInvitationId] = useState(null);
+  const [showPermissions, setShowPermissions] = useState(false);
   const [logSearch, setLogSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
 
@@ -246,6 +252,9 @@ export default function AdminDashboard() {
                     <div className="ra">
                       {r.kind === 'user' ? (
                         <>
+                          <button className="rb vw" onClick={() => setViewUserId(r.id)} title="View user">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                          </button>
                           <button className="rb ed" onClick={() => setEditUser(r)} title="Edit user">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                           </button>
@@ -253,6 +262,9 @@ export default function AdminDashboard() {
                         </>
                       ) : (
                         <>
+                          <button className="rb vw" onClick={() => setViewInvitationId(r.id)} title="View invitation">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                          </button>
                           <button className="rb ap" onClick={() => handleResend(r.raw)}>Resend</button>
                           <button className="rb rj" onClick={() => handleCancelInvite(r.raw)}>Cancel</button>
                         </>
@@ -278,7 +290,10 @@ export default function AdminDashboard() {
             <div className="kc gn"><div className="kl">Total Users</div><div className="kv">{users.length}</div><div className="kd nt">Across all roles</div><div className="ki">👥</div></div>
             <div className="kc yw"><div className="kl">Pending</div><div className="kv">{pendingInvites}</div><div className="kd nt">Invites outstanding</div><div className="ki">⏳</div></div>
           </div>
-          <div className="tbbar"><div className="tbt">Role Definitions &amp; Permissions</div></div>
+          <div className="tbbar">
+            <div className="tbt">Role Definitions &amp; Permissions</div>
+            <button className="ab sec" style={{ height: 32, fontSize: 12 }} onClick={() => setShowPermissions(true)}>View all system permissions</button>
+          </div>
           <table className="dt">
             <thead><tr><th>Role</th><th>Users</th><th>Scope</th><th>Permissions</th></tr></thead>
             <tbody>
@@ -415,6 +430,9 @@ export default function AdminDashboard() {
       <ShopEditModal shop={editShop} brands={brands} onClose={(changed) => { setEditShop(null); if (changed) refresh(); }} />
       <BrandDetailModal brandId={viewBrandId} onClose={() => setViewBrandId(null)} />
       <ShopDetailModal shopId={viewShopId} onClose={() => setViewShopId(null)} />
+      <UserDetailModal userId={viewUserId} onClose={() => setViewUserId(null)} />
+      <InvitationDetailModal invitationId={viewInvitationId} onClose={() => setViewInvitationId(null)} />
+      <PermissionsModal open={showPermissions} onClose={() => setShowPermissions(false)} />
     </>
   );
 }

@@ -22,6 +22,10 @@ import {
   ProcurementProductModal,
   ManageCategoriesModal,
   SupplierDocumentsModal,
+  SupplierDetailModal,
+  ProductDetailModal,
+  CategoryDetailModal,
+  SupplierProductsModal,
 } from '../components/modals/AllModals';
 
 // Mirror of BrandChip's chip class map so supplier brand badges render in-line.
@@ -71,6 +75,10 @@ export default function ProcDashboard() {
   const [editProduct, setEditProduct] = useState(null);
   const [deleteProductTarget, setDeleteProductTarget] = useState(null);
   const [manageCatsOpen, setManageCatsOpen] = useState(false);
+  const [viewSupplierId, setViewSupplierId] = useState(null);
+  const [viewProductId, setViewProductId] = useState(null);
+  const [viewCategoryId, setViewCategoryId] = useState(null);
+  const [supplierProductsTarget, setSupplierProductsTarget] = useState(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -466,6 +474,9 @@ export default function ProcDashboard() {
                       <td style={{ fontSize: 11, color: 'var(--ts)' }}>{p.brands}</td>
                       <td>
                         <div className="ra">
+                          <button className="rb vw" onClick={() => setViewProductId(raw.id)} title="View product">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                          </button>
                           <button className="rb ed" onClick={() => { setEditProduct(raw); setProductModalOpen(false); }}>Edit</button>
                           <button className="rb rv" onClick={() => setDeleteProductTarget({ id: raw.id, name: raw.name })}>Delete</button>
                         </div>
@@ -656,8 +667,12 @@ export default function ProcDashboard() {
                         {isPending && <button className="rb rv" onClick={() => setRejectSupplierTarget(raw)}>Reject</button>}
                         {isActive && <button className="rb rv" onClick={() => setSuspendSupplierTarget(raw)}>Suspend</button>}
                         {isSuspended && <button className="rb ap" onClick={() => handleReactivateSupplier(s)}>Reactivate</button>}
+                        <button className="rb vw" onClick={() => setViewSupplierId(s.id)} title="Details">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
                         <button className="rb ed" onClick={() => setEditSupplier(raw)}>Edit</button>
                         <button className="rb ed" onClick={() => setDocsSupplierTarget(raw)} title="Documents">Docs</button>
+                        <button className="rb ed" onClick={() => setSupplierProductsTarget(raw)} title="Products">Products</button>
                         <button className="rb ed" onClick={() => { setSupplierProfile(s); setTab(1); }} title="View profile">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                         </button>
@@ -726,6 +741,13 @@ export default function ProcDashboard() {
         categories={categoriesRaw}
         onClose={() => setManageCatsOpen(false)}
         onChanged={loadAll}
+      />
+      <SupplierDetailModal supplierId={viewSupplierId} onClose={() => setViewSupplierId(null)} />
+      <ProductDetailModal productId={viewProductId} onClose={() => setViewProductId(null)} />
+      <CategoryDetailModal categoryId={viewCategoryId} onClose={() => setViewCategoryId(null)} />
+      <SupplierProductsModal
+        supplier={supplierProductsTarget}
+        onClose={() => { setSupplierProductsTarget(null); loadAll(); }}
       />
     </>
   );

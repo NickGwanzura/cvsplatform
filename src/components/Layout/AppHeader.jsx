@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { ROLES } from '../../data/mockData';
+import { ChangePasswordModal } from '../modals/AllModals';
 
 export default function AppHeader() {
   const { session, headerTitle, openModal, navOpen, setNavOpen, currency, toggleCurrency } = useApp();
+  const [showChangePassword, setShowChangePassword] = useState(false);
   if (!session) return null;
   const r = ROLES[session.roleKey];
 
@@ -55,8 +58,22 @@ export default function AppHeader() {
         <span className="cvs-notif-pulse" />
       </button>
 
+      {/* Change password */}
+      <button
+        onClick={() => setShowChangePassword(true)}
+        title="Change password"
+        style={{
+          height: 30, width: 30, border: '1px solid var(--bs)', borderRadius: 4,
+          background: 'var(--l2)', cursor: 'pointer', color: 'var(--ts)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s',
+        }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </button>
+
       {/* Notifications modal inline */}
       <NotificationsModal />
+      <ChangePasswordModal open={showChangePassword} onClose={() => setShowChangePassword(false)} />
     </header>
   );
 }
