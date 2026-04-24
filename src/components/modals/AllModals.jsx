@@ -48,6 +48,8 @@ import {
   listProcurementProducts,
   changePassword,
   listPermissions,
+  assignUserRole,
+  syncRolePermissions,
 } from '../../lib/cvsApi';
 
 function extractApiError(err, fallback = 'Request failed') {
@@ -1146,6 +1148,216 @@ export function PermissionsModal({ open, onClose }) {
                   ))}
                 </tbody>
               </table>
+            </div>
+          ))}
+        </>
+      )}
+    </CvsModal>
+  );
+}
+
+/* ── Assign User Role Modal ─────────────────────────────────────────────── */
+export function AssignUserRoleModal({ user, roles = [], brands = [], shops = [], onClose }) {
+  const { addToast } = useApp();
+  const [roleId, setRoleId] = useState('');
+  const [brandId, setBrandId] = useState('');
+  const [shopId, setShopId] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (user) { setRoleId(''); setBrandId(''); setShopId(''); }
+  }, [user]);
+
+  if (!user) return null;
+  const selectedRole = roles.find((r) => r.id === roleId);
+  const isGlobalRole = selectedRole?.scope_type === 'global';
+  const isShopRole = selectedRole?.code === 'SHOP_MANAGER';
+  const shopsInBrand = shops.filter((s) => s.brand_id === brandId);
+  const valid = !!roleId && (isGlobalRole || !!brandId) && (!isShopRole || !!shopId);
+
+  const save = async () => {
+    if (!valid || saving) return;
+    setSaving(true);
+    try {
+      const payload = { role_id: roleId };
+      if (!isGlobalRole && brandId) payload.brand_id = brandId;
+      if (isShopRole && shopId) payload.shop_id = shopId;
+      await assignUserRole(user.id, payload);
+      addToast('ok', 'Role assigned', `${selectedRole?.name || 'Role'} added to ${user.name || user.email || user.full_name}`);
+      onClose?.(true);
+    } catch (err) {
+      addToast('er', 'Assignment failed', extractApiError(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <CvsModal
+      open={!!user}
+      onClose={() => onClose?.(false)}
+      title="Assign role"
+      subtitle={user.name || user.email || user.full_name || 'User'}
+      size="sm"
+      footer={<>
+        <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={() => onClose?.(false)}>Cancel</button>
+        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} disabled={!valid || saving} onClick={save}>{saving ? 'Saving…' : 'Assign'}</button>
+      </>}
+    >
+      <div className="fg">
+        <div className="fi full">
+          <label className="fl">Role</label>
+          <select className="fsel" value={roleId} onChange={(e) => { setRoleId(e.target.value); setBrandId(''); setShopId(''); }}>
+            <option value="">— Select role —</option>
+            {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+        </div>
+        {selectedRole && !isGlobalRole && (
+          <div className="fi full">
+            <label className="fl">Brand</label>
+            <select className="fsel" value={brandId} onChange={(e) => { setBrandId(e.target.value); setShopId(''); }}>
+              <option value="">— Select brand —</option>
+              {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          </div>
+        )}
+        {isShopRole && brandId && (
+          <div className="fi full">
+            <label className="fl">Shop</label>
+            <select className="fsel" value={shopId} onChange={(e) => setShopId(e.target.value)}>
+              <option value="">— Select shop —</option>
+              {shopsInBrand.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+            {shopsInBrand.length === 0 && (
+              <div className="fh" style={{ color: 'var(--ts)' }}>No shops registered for this brand yet.</div>
+            )}
+          </div>
+        )}
+      </div>
+      <div style={{ marginTop: 12, padding: 10, background: 'var(--info-bg)', borderLeft: '3px solid var(--int)', fontSize: 11, color: 'var(--ts)' }}>
+        This adds a new role assignment to the user without touching existing ones. To replace a role, remove the old one separately.
+      </div>
+    </CvsModal>
+  );
+}
+
+/* ── Role Permissions Modal ─────────────────────────────────────────────── */
+export function RolePermissionsModal({ role, onClose }) {
+  const { addToast } = useApp();
+  const [allPerms, setAllPerms] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+  const [errDetail, setErrDetail] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [filter, setFilter] = useState('');
+
+  useEffect(() => {
+    if (!role) return;
+    let cancelled = false;
+    setLoading(true);
+    setErr('');
+    setErrDetail('');
+    setSelectedIds((role.permissions || []).map((p) => p.id).filter(Boolean));
+    listPermissions()
+      .then((list) => !cancelled && setAllPerms(Array.isArray(list) ? list : []))
+      .catch((e) => {
+        if (cancelled) return;
+        const status = e?.response?.status;
+        if (status >= 500) {
+          setErr('The permissions service is temporarily unavailable. The backend team has been notified.');
+          setErrDetail(extractApiError(e, ''));
+        } else {
+          setErr(extractApiError(e, 'Failed to load permissions'));
+        }
+      })
+      .finally(() => !cancelled && setLoading(false));
+    return () => { cancelled = true; };
+  }, [role]);
+
+  if (!role) return null;
+
+  const toggle = (id) =>
+    setSelectedIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+
+  const filtered = filter
+    ? allPerms.filter((p) => [p.name, p.code, p.description].some((v) => String(v || '').toLowerCase().includes(filter.toLowerCase())))
+    : allPerms;
+  const grouped = filtered.reduce((acc, p) => {
+    const key = p.group || p.module || (p.code || '').split('.')[0] || 'Other';
+    (acc[key] ||= []).push(p);
+    return acc;
+  }, {});
+
+  const save = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await syncRolePermissions(role.id, selectedIds);
+      addToast('ok', 'Permissions updated', `${role.name || 'Role'} now has ${selectedIds.length} permission${selectedIds.length === 1 ? '' : 's'}`);
+      onClose?.(true);
+    } catch (e) {
+      addToast('er', 'Save failed', extractApiError(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <CvsModal
+      open={!!role}
+      onClose={() => onClose?.(false)}
+      title={`Permissions — ${role.name || 'Role'}`}
+      subtitle={role.code ? `${role.code} · ${selectedIds.length} selected` : `${selectedIds.length} selected`}
+      size="lg"
+      footer={<>
+        <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={() => onClose?.(false)}>Cancel</button>
+        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} disabled={saving || !!err} onClick={save}>{saving ? 'Saving…' : 'Save permissions'}</button>
+      </>}
+    >
+      {loading && <div style={{ color: 'var(--ts)', fontSize: 12 }}>Loading…</div>}
+      {err && !loading && (
+        <div className="ntf er">
+          <div>
+            <div className="ntf-t">Could not load permissions</div>
+            <div className="ntf-b">{err}</div>
+            {errDetail && (
+              <details style={{ marginTop: 6, fontSize: 11, color: 'var(--ts)' }}>
+                <summary style={{ cursor: 'pointer' }}>Technical details</summary>
+                <div style={{ marginTop: 4, fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{errDetail}</div>
+              </details>
+            )}
+          </div>
+        </div>
+      )}
+      {!loading && !err && (
+        <>
+          <input className="srch" placeholder="Filter permissions…" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ marginBottom: 12, width: '100%' }} />
+          {Object.keys(grouped).length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--ts)', padding: 20, fontSize: 12 }}>No permissions match.</div>
+          ) : Object.entries(grouped).map(([group, items]) => (
+            <div key={group} style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ts)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, display: 'flex', justifyContent: 'space-between' }}>
+                <span>{group}</span>
+                <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 400 }}>
+                  {items.filter((p) => selectedIds.includes(p.id)).length}/{items.length}
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4 }}>
+                {items.map((p) => {
+                  const on = selectedIds.includes(p.id);
+                  return (
+                    <label key={p.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 8px', fontSize: 12, cursor: 'pointer', background: on ? 'var(--info-bg)' : 'transparent', border: '1px solid var(--bs)' }}>
+                      <input type="checkbox" checked={on} onChange={() => toggle(p.id)} style={{ marginTop: 2 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600 }}>{p.name || p.code}</div>
+                        <div style={{ fontSize: 10, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace", wordBreak: 'break-word' }}>{p.code}</div>
+                        {p.description && <div style={{ fontSize: 10, color: 'var(--ts)', marginTop: 2 }}>{p.description}</div>}
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           ))}
         </>

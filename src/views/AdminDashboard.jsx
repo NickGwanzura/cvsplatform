@@ -15,6 +15,8 @@ import {
   UserDetailModal,
   InvitationDetailModal,
   PermissionsModal,
+  AssignUserRoleModal,
+  RolePermissionsModal,
 } from '../components/modals/AllModals';
 import {
   listUsers,
@@ -66,6 +68,8 @@ export default function AdminDashboard() {
   const [viewUserId, setViewUserId] = useState(null);
   const [viewInvitationId, setViewInvitationId] = useState(null);
   const [showPermissions, setShowPermissions] = useState(false);
+  const [assignUser, setAssignUser] = useState(null);
+  const [editRolePerms, setEditRolePerms] = useState(null);
   const [logSearch, setLogSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
 
@@ -258,6 +262,7 @@ export default function AdminDashboard() {
                           <button className="rb ed" onClick={() => setEditUser(r)} title="Edit user">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                           </button>
+                          <button className="rb ap" onClick={() => setAssignUser(r)} title="Assign role">+ Role</button>
                           <button className="rb rj" onClick={() => setRevokeUser(r)}>Revoke</button>
                         </>
                       ) : (
@@ -282,7 +287,7 @@ export default function AdminDashboard() {
           <div className="ntf info" style={{ marginBottom: 16 }}>
             <div>
               <div className="ntf-t">Role-Based Access Control</div>
-              <div className="ntf-b">Roles and their permissions are defined server-side. Contact the backend team to adjust role permissions.</div>
+              <div className="ntf-b">Adjust role permissions inline via "Edit perms" on each row — changes sync through <code style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>PUT /api/v1/roles/:id/permissions</code>. The full permission list is backed by <code style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>GET /api/v1/permissions</code>; that endpoint is currently returning 500 until the backend team re-binds its auth middleware.</div>
             </div>
           </div>
           <div className="kg c3">
@@ -295,12 +300,12 @@ export default function AdminDashboard() {
             <button className="ab sec" style={{ height: 32, fontSize: 12 }} onClick={() => setShowPermissions(true)}>View all system permissions</button>
           </div>
           <table className="dt">
-            <thead><tr><th>Role</th><th>Users</th><th>Scope</th><th>Permissions</th></tr></thead>
+            <thead><tr><th>Role</th><th>Users</th><th>Scope</th><th>Permissions</th><th style={{ width: 120 }}>Action</th></tr></thead>
             <tbody>
               {loading && roles.length === 0 ? (
-                <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>Loading…</td></tr>
+                <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>Loading…</td></tr>
               ) : roles.length === 0 ? (
-                <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No roles available.</td></tr>
+                <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No roles available.</td></tr>
               ) : roles.map((r) => (
                 <tr key={r.id}>
                   <td>
@@ -315,6 +320,9 @@ export default function AdminDashboard() {
                         <span key={p.id} style={{ background: 'var(--info-bg)', color: 'var(--info)', fontSize: 10, padding: '2px 6px', fontFamily: "'IBM Plex Mono',monospace" }}>{p.code}</span>
                       ))}
                     </div>
+                  </td>
+                  <td>
+                    <button className="rb ed" onClick={() => setEditRolePerms(r)}>Edit perms</button>
                   </td>
                 </tr>
               ))}
@@ -433,6 +441,17 @@ export default function AdminDashboard() {
       <UserDetailModal userId={viewUserId} onClose={() => setViewUserId(null)} />
       <InvitationDetailModal invitationId={viewInvitationId} onClose={() => setViewInvitationId(null)} />
       <PermissionsModal open={showPermissions} onClose={() => setShowPermissions(false)} />
+      <AssignUserRoleModal
+        user={assignUser}
+        roles={roles}
+        brands={brands}
+        shops={shops}
+        onClose={(changed) => { setAssignUser(null); if (changed) refresh(); }}
+      />
+      <RolePermissionsModal
+        role={editRolePerms}
+        onClose={(changed) => { setEditRolePerms(null); if (changed) refresh(); }}
+      />
     </>
   );
 }

@@ -143,9 +143,16 @@ export const createUser = (data) => api.post('/users', data).then((r) => r.data)
 export const updateUser = (id, data) => api.put(`/users/${id}`, data).then((r) => r.data);
 export const updateUserStatus = (id, status) =>
   api.patch(`/users/${id}/status`, { status }).then((r) => r.data);
+// Assign a role (+ optional brand/shop scope) to an existing user.
+// Payload: { role_id, brand_id?, shop_id? }
+export const assignUserRole = (userId, data) =>
+  api.post(`/users/${userId}/assignments`, data).then((r) => r.data);
 
 // Roles
 export const listRoles = () => api.get('/roles').then(unwrap);
+// Replace the permission set on a role. Payload: { permission_ids: [uuid, ...] }
+export const syncRolePermissions = (roleId, permissionIds) =>
+  api.put(`/roles/${roleId}/permissions`, { permission_ids: permissionIds }).then((r) => r.data);
 
 // Permissions
 export const listPermissions = () => api.get('/permissions').then(unwrap);
