@@ -1,9 +1,15 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { getMyProfile, logoutAll } from '../lib/cvsApi';
+import { ROLES } from '../data/mockData';
+import { normalizeAuth } from '../lib/authMap';
 
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
   const [session, setSession] = useState(null);
+  const [bootstrapping, setBootstrapping] = useState(
+    typeof window !== 'undefined' && !!localStorage.getItem('token')
+  );
   const [activeView, setActiveView] = useState('');
   const [activeNavIdx, setActiveNavIdx] = useState(0);
   const [activeTab, setActiveTab] = useState(0);
@@ -24,16 +30,54 @@ export function AppProvider({ children }) {
     setActiveNavIdx(0);
     setActiveTab(roleData.nav[0].tab ?? 0);
     setHeaderTitle(roleData.nav[0].lb);
-    addToast('ok', `Welcome back, ${roleData.name.split(' ')[0]}`, `${roleData.label} · ${roleData.brand}`);
+    const firstName = (roleData.name || '').split(' ')[0] || 'there';
+    addToast('ok', `Welcome back, ${firstName}`, `${roleData.label} · ${roleData.brand}`);
   }, []);
 
   const logout = useCallback(() => {
+    logoutAll().catch(() => {});
+    localStorage.removeItem('token');
     setSession(null);
     setActiveView('');
     setActiveNavIdx(0);
     setActiveTab(0);
     setBatchSelected([]);
   }, []);
+
+  useEffect(() => {
+    if (!bootstrapping) return;
+    let cancelled = false;
+    getMyProfile()
+      .then((raw) => {
+        if (cancelled) return;
+        const auth = normalizeAuth(raw);
+        const roleData = ROLES[auth.roleKey];
+        if (!roleData) {
+          localStorage.removeItem('token');
+          return;
+        }
+        const nav0 = roleData.nav[0];
+        setSession({
+          roleKey: auth.roleKey,
+          ...roleData,
+          name: auth.user.name || auth.user.email || '',
+          email: auth.user.email || '',
+        });
+        setActiveView(nav0.v);
+        setActiveNavIdx(0);
+        setActiveTab(nav0.tab ?? 0);
+        setHeaderTitle(nav0.lb);
+      })
+      .catch(() => {
+        localStorage.removeItem('token');
+      })
+      .finally(() => {
+        if (!cancelled) setBootstrapping(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [bootstrapping]);
 
   const navigate = useCallback((navItem, idx) => {
     setActiveView(navItem.v);
@@ -58,7 +102,7 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider value={{
-      session, login, logout,
+      session, login, logout, bootstrapping,
       activeView, activeNavIdx, activeTab, navigate, headerTitle,
       toasts, addToast, dismissToast,
       modals, openModal, closeModal,

@@ -1,89 +1,109 @@
 import { serve } from '@hono/node-server';
+import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { Resend } from 'resend';
+import fs from 'node:fs';
+import path from 'node:path';
+import { Agent } from 'undici';
 
 const app = new Hono();
-const resend = new Resend(process.env.RESEND_API_KEY || 're_2CnmsTWH_7PWPQxLyYZhNEj4Zq6gLmL3R');
+
+const UPSTREAM_API_URL = (process.env.UPSTREAM_API_URL || 'https://69.197.142.170/api/v1').replace(/\/+$/, '');
+
+// Upstream has an invalid/self-signed TLS cert. Since this call is
+// server-to-server (Railway container → upstream), the browser never sees
+// the cert — it only ever talks to our origin over Railway's HTTPS. Skip
+// validation here.
+const UPSTREAM_INSECURE = process.env.UPSTREAM_INSECURE_TLS !== 'false';
+const insecureDispatcher = UPSTREAM_INSECURE
+  ? new Agent({ connect: { rejectUnauthorized: false } })
+  : undefined;
 
 app.use('/*', cors({ origin: '*' }));
 
 app.get('/api/health', (c) => c.json({ status: 'ok', time: new Date().toISOString() }));
 
-app.post('/api/invite', async (c) => {
-  const { to, name, role, brand, shop, budget, invitedBy, note } = await c.req.json();
-  if (!to || !name || !role) return c.json({ error: 'to, name, and role are required' }, 400);
+// Proxy /api/v1/* → UPSTREAM_API_URL. Fixes mixed-content by keeping the
+// browser on HTTPS (same origin) while we reach the HTTP backend server-side.
+app.all('/api/v1/*', async (c) => {
+  const startedAt = Date.now();
+  const url = new URL(c.req.url);
+  const suffix = url.pathname.slice('/api/v1'.length);
+  const upstreamUrl = UPSTREAM_API_URL + suffix + url.search;
+  const method = c.req.method;
+  const reqId = Math.random().toString(36).slice(2, 8);
 
-  const subject = `You've been invited to CVS — ${role} for ${brand}`;
-  const html = `
-    <div style="font-family: 'IBM Plex Sans', Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;">
-      <div style="text-align: center; margin-bottom: 24px;">
-        <h1 style="font-size: 22px; color: #161616; margin: 0 0 4px;">CVS — Cash Verification System</h1>
-        <p style="font-size: 13px; color: #6f6f6f; margin: 0;">Simbisa Brands Ltd</p>
-      </div>
-      <div style="background: #e8f0fe; border-left: 4px solid #0f62fe; padding: 16px; margin-bottom: 20px;">
-        <p style="font-size: 14px; color: #161616; margin: 0 0 8px;">Hi <strong>${name}</strong>,</p>
-        <p style="font-size: 13px; color: #525252; margin: 0 0 8px;">You've been invited by <strong>${invitedBy || 'an administrator'}</strong> to join CVS as a <strong>${role}</strong>${brand ? ` for <strong>${brand}</strong>` : ''}.</p>
-        ${shop && shop !== 'N/A' ? `<p style="font-size: 13px; color: #525252; margin: 0;">Assigned shop: <strong>${shop}</strong></p>` : ''}
-        ${budget ? `<p style="font-size: 13px; color: #525252; margin: 0;">Monthly budget: <strong>$${budget}</strong></p>` : ''}
-      </div>
-      ${note ? `<p style="font-size: 13px; color: #525252; margin: 0 0 20px; font-style: italic;">"${note}"</p>` : ''}
-      <div style="text-align: center; margin: 28px 0;">
-        <a href="${process.env.APP_URL || 'http://localhost:5173'}" style="display: inline-block; background: #0f62fe; color: #fff; padding: 14px 36px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 600;">Accept Invitation</a>
-      </div>
-      <p style="font-size: 12px; color: #8d8d8d; text-align: center; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e0e0e0;">
-        This link will expire in 48 hours. If you didn't expect this invitation, you can ignore this email.
-      </p>
-    </div>
-  `;
+  const headers = new Headers();
+  c.req.raw.headers.forEach((value, key) => {
+    const k = key.toLowerCase();
+    if (k === 'host' || k === 'connection' || k === 'content-length') return;
+    headers.set(key, value);
+  });
+
+  const body = method === 'GET' || method === 'HEAD' ? undefined : await c.req.arrayBuffer();
+  const bodySize = body ? body.byteLength : 0;
+
+  console.log(`[proxy ${reqId}] → ${method} ${upstreamUrl}${bodySize ? ` (${bodySize}B)` : ''}`);
 
   try {
-    const result = await resend.emails.send({
-      from: 'CVS Simbisa <noreply@simbisa.co.zw>',
-      to,
-      subject,
-      html,
+    const upstream = await fetch(upstreamUrl, {
+      method,
+      headers,
+      body,
+      redirect: 'follow',
+      dispatcher: insecureDispatcher,
     });
-    return c.json({ ok: true, id: result.data?.id });
+    const ms = Date.now() - startedAt;
+    console.log(`[proxy ${reqId}] ← ${upstream.status} ${method} ${upstreamUrl} (${ms}ms)`);
+
+    const resHeaders = new Headers();
+    upstream.headers.forEach((v, k) => {
+      const kl = k.toLowerCase();
+      if (kl === 'content-encoding' || kl === 'transfer-encoding' || kl === 'connection') return;
+      resHeaders.set(k, v);
+    });
+    return new Response(upstream.body, { status: upstream.status, headers: resHeaders });
   } catch (err) {
-    return c.json({ error: err.message }, 500);
+    const ms = Date.now() - startedAt;
+    console.error(`[proxy ${reqId}] ✗ ${method} ${upstreamUrl} (${ms}ms):`, err.code || '', err.message);
+    if (err.cause) console.error(`[proxy ${reqId}]   cause:`, err.cause);
+    return c.json(
+      {
+        error: 'Upstream API unreachable',
+        detail: err.message,
+        code: err.code,
+        upstream: upstreamUrl,
+        requestId: reqId,
+      },
+      502
+    );
   }
 });
 
-app.post('/api/notify', async (c) => {
-  const { to, title, message, type } = await c.req.json();
-  if (!to || !title || !message) return c.json({ error: 'to, title, and message are required' }, 400);
+// Map unresolved tilde paths (webpack convention) that Vite leaves in the
+// built CSS. Carbon's SCSS references ~@ibm/plex/... fonts; we serve them
+// straight from node_modules at runtime.
+app.use(
+  '/assets/~@ibm/*',
+  serveStatic({
+    root: './node_modules/@ibm',
+    rewriteRequestPath: (p) => p.replace(/^\/assets\/~@ibm/, ''),
+  })
+);
 
-  const colors = { info: '#0f62fe', success: '#24a148', warning: '#f1c21b', error: '#da1e28' };
-  const html = `
-    <div style="font-family: 'IBM Plex Sans', Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;">
-      <div style="text-align: center; margin-bottom: 16px;">
-        <h1 style="font-size: 18px; color: #161616; margin: 0;">CVS Notification</h1>
-      </div>
-      <div style="background: #f4f4f4; border-left: 4px solid ${colors[type || 'info']}; padding: 16px; margin-bottom: 20px;">
-        <p style="font-size: 15px; font-weight: 600; color: #161616; margin: 0 0 8px;">${title}</p>
-        <p style="font-size: 13px; color: #525252; margin: 0;">${message}</p>
-      </div>
-      <p style="font-size: 12px; color: #8d8d8d; text-align: center; margin-top: 24px;">
-        Simbisa Brands Ltd · Cash Verification System
-      </p>
-    </div>
-  `;
+// Static SPA — serve built assets from dist/
+const distDir = path.resolve('./dist');
+const hasDist = fs.existsSync(distDir);
 
-  try {
-    const result = await resend.emails.send({
-      from: 'CVS Simbisa <noreply@simbisa.co.zw>',
-      to,
-      subject: `CVS: ${title}`,
-      html,
-    });
-    return c.json({ ok: true, id: result.data?.id });
-  } catch (err) {
-    return c.json({ error: err.message }, 500);
-  }
-});
+if (hasDist) {
+  app.use('/*', serveStatic({ root: './dist' }));
+  const indexHtml = fs.readFileSync(path.join(distDir, 'index.html'), 'utf-8');
+  app.notFound((c) => c.html(indexHtml));
+} else {
+  app.get('/', (c) => c.text('CVS API server — SPA not built. Run `npm run build`.'));
+}
 
-const PORT = process.env.API_PORT || 3001;
+const PORT = Number(process.env.PORT) || Number(process.env.API_PORT) || 3001;
 serve({ fetch: app.fetch, port: PORT }, (info) => {
-  console.log(`CVS API server running on http://localhost:${info.port}`);
+  console.log(`CVS server on http://localhost:${info.port} (upstream: ${UPSTREAM_API_URL})`);
 });

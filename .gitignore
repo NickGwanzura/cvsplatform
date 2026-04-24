@@ -1,5 +1,9 @@
 node_modules/
 dist/
 .kilo/
+.claude/
 .DS_Store
 *.local
+.env
+.env.*
+!.env.example

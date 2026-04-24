@@ -73,20 +73,9 @@ function NotificationsModal() {
           <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20 }} onClick={() => closeModal('notifM')}>×</button>
         </div>
         <div style={{ padding: 0, overflowY: 'auto', flex: 1 }}>
-          {[
-            { icon: '🚨', color: 'var(--er)', title: 'THRESHOLD ALERT — Sh-14 at 90%', time: '5 minutes ago' },
-            { icon: '✓', color: 'var(--ok)', title: 'PC-0038 paid — $250 via InnBucks', time: '2 hours ago' },
-            { icon: '⚠', color: 'var(--wa-t)', title: 'FastFix Repairs pending verification', time: '3 hours ago' },
-            { icon: 'ℹ', color: 'var(--info)', title: 'Cron reconciliation complete', time: 'Today 00:01' },
-          ].map((n, i) => (
-            <div key={i} style={{ padding: '11px 18px', borderBottom: '1px solid var(--bs)', display: 'flex', gap: 10 }}>
-              <div style={{ color: n.color, fontSize: 15 }}>{n.icon}</div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{n.title}</div>
-                <div style={{ fontSize: 11, color: 'var(--ts)', marginTop: 1 }}>{n.time}</div>
-              </div>
-            </div>
-          ))}
+          <div style={{ padding: '28px 20px', textAlign: 'center', color: 'var(--ts)', fontSize: 13 }}>
+            No notifications.
+          </div>
         </div>
         <div style={{ padding: '13px 20px', borderTop: '1px solid var(--bs)', display: 'flex', justifyContent: 'flex-end' }}>
           <button className="ab pri lg" onClick={() => closeModal('notifM')}>Mark all read</button>

@@ -6,55 +6,22 @@ import BrandChip from '../components/shared/BrandChip';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
 import DataTable from '../components/shared/DataTable';
 
-const SUPPLIERS = [
-  { name: 'CleanPro Supplies', cat: 'Cleaning',   spend: 2340, ytd: 14100, brands: [['Chicken Inn','bci'],['Pizza Inn','bcp']], trend: 12,  txns: 18, verified: true,  cert: '2026-03-01', wallet: 'IB-0773-8812', contact: 'T. Chigwada',  phone: '+263 77 123 4567', email: 't.chigwada@cleanpro.co.zw',  address: '12 Robert Mugabe Rd, Harare', dept: 'Facilities' },
-  { name: 'Swift Maintenance', cat: 'Maintenance',spend: 3120, ytd: 18920, brands: [['Pizza Inn','bcp'],['Steers','bcs']],       trend: 5,   txns: 22, verified: true,  cert: '2025-08-15', wallet: 'IB-0771-2244', contact: 'M. Ndlovu',    phone: '+263 77 234 5678', email: 'm.ndlovu@swiftmaint.co.zw',  address: '7 Samora Machel Ave, Harare', dept: 'Facilities' },
-  { name: 'ZimGas Ltd',        cat: 'Gas',        spend: 1870, ytd: 11220, brands: [['Chicken Inn','bci'],['Creamy Inn','bcc']], trend: -3,  txns: 14, verified: true,  cert: '2025-06-30', wallet: 'IB-0774-3344', contact: 'P. Mutingwende', phone: '+263 77 345 6789', email: 'procurement@zimgas.co.zw', address: '45 Simon Muzenda St, Harare', dept: 'Utilities' },
-  { name: 'OvenPro',           cat: 'Equipment',  spend: 1200, ytd: 7200,  brands: [['Pizza Inn','bcp']],                        trend: 22,  txns: 8,  verified: true,  cert: '2026-01-12', wallet: 'IB-0775-1100', contact: 'S. Chikomo',    phone: '+263 77 456 7890', email: 'sales@ovenpro.co.zw',       address: '88 Herbert Chitepo, Harare', dept: 'Equipment' },
-  { name: 'AquaFix',           cat: 'Plumbing',   spend: 890,  ytd: 5340,  brands: [['Chicken Inn','bci']],                      trend: 0,   txns: 5,  verified: true,  cert: '2025-05-20', wallet: 'IB-0776-9900', contact: 'R. Moyo',       phone: '+263 77 567 8901', email: 'info@aquafix.co.zw',        address: '23 Kwame Nkrumah Ave, Harare', dept: 'Plumbing' },
-  { name: 'FastFix Repairs',   cat: 'Maintenance',spend: 430,  ytd: 2580,  brands: [['Pizza Inn','bcp']],                        trend: null, txns: 3, verified: false, cert: null,          wallet: null,            contact: 'J. Khupe',      phone: '+263 77 678 9012', email: 'j.khupe@fastfix.co.zw',    address: '51 Jason Moyo Ave, Harare', dept: 'Facilities' },
-  { name: 'OfficeFirst',       cat: 'Stationery', spend: 340,  ytd: 2040,  brands: [['Pizza Inn','bcp'],['Chicken Inn','bci']], trend: 8,   txns: 11, verified: true,  cert: '2025-12-01', wallet: 'IB-0779-4412', contact: 'A. Musona',     phone: '+263 77 789 0123', email: 'orders@officefirst.co.zw', address: '12 Borrowdale Rd, Harare', dept: 'Admin' },
-];
+const SUPPLIERS = [];
 
-const PRODUCTS_DATA = [
-  { code: 'CLN-001', name: 'Floor Cleaner (5L)',      cat: 'Cleaning',    dept: 'Facilities', supplier: 'CleanPro Supplies',  price: 28.00, unit: 'litre',  brands: 'All brands', minOrder: 10 },
-  { code: 'CLN-002', name: 'Surface Sanitizer (2L)',  cat: 'Cleaning',    dept: 'Facilities', supplier: 'CleanPro Supplies',  price: 15.50, unit: 'litre',  brands: 'All brands', minOrder: 20 },
-  { code: 'MNT-001', name: 'Oven Element (Std)',      cat: 'Maintenance', dept: 'Facilities', supplier: 'Swift Maintenance',  price: 180.00, unit: 'piece',  brands: 'PI, ST',     minOrder: 1 },
-  { code: 'MNT-002', name: 'Grease Trap Clean (Svc)', cat: 'Maintenance', dept: 'Facilities', supplier: 'Swift Maintenance',  price: 95.00,  unit: 'service', brands: 'All brands', minOrder: 1 },
-  { code: 'GAS-001', name: 'LPG Cylinder (9kg)',      cat: 'Gas',         dept: 'Utilities',  supplier: 'ZimGas Ltd',         price: 42.00,  unit: 'cylinder', brands: 'CI, CR, ND', minOrder: 2 },
-  { code: 'GAS-002', name: 'Gas Regulator',           cat: 'Gas',         dept: 'Utilities',  supplier: 'ZimGas Ltd',         price: 18.00,  unit: 'piece',  brands: 'All brands', minOrder: 1 },
-  { code: 'EQT-001', name: 'Conveyor Belt Motor',     cat: 'Equipment',   dept: 'Facilities', supplier: 'OvenPro',            price: 450.00, unit: 'piece',  brands: 'PI',         minOrder: 1 },
-  { code: 'PLB-001', name: 'Tap Cartridge Set',       cat: 'Plumbing',    dept: 'Facilities', supplier: 'AquaFix',            price: 12.00,  unit: 'set',    brands: 'CI',         minOrder: 5 },
-  { code: 'STN-001', name: 'A4 Paper (Ream)',         cat: 'Stationery',  dept: 'Admin',      supplier: 'OfficeFirst',         price: 5.50,   unit: 'ream',   brands: 'PI, CI',     minOrder: 10 },
-  { code: 'STN-002', name: 'Thermal Receipt Roll',    cat: 'Stationery',  dept: 'Admin',      supplier: 'OfficeFirst',         price: 3.20,   unit: 'roll',   brands: 'All brands', minOrder: 50 },
-];
+const PRODUCTS_DATA = [];
 
-const BREAKDOWN = [
-  { supplier: 'CleanPro',      cat: 'Cleaning Supplies',  brand: 'Chicken Inn', shop: 'Sh-14', loc: 'Borrowdale', val: 280, qty: 3, last: '23 Mar' },
-  { supplier: 'Swift Maint.',  cat: 'Maintenance',         brand: 'Pizza Inn',   shop: 'Sh-03', loc: 'Avondale',   val: 450, qty: 1, last: '23 Mar' },
-  { supplier: 'ZimGas',        cat: 'Gas & Utilities',    brand: 'Creamy Inn',  shop: 'Sh-11', loc: 'Highfield',  val: 310, qty: 2, last: '23 Mar' },
-  { supplier: 'CleanPro',      cat: 'Cleaning Supplies',  brand: 'Pizza Inn',   shop: 'Sh-19', loc: 'Eastgate',   val: 95,  qty: 1, last: '23 Mar' },
-  { supplier: 'OvenPro',       cat: 'Equipment Repair',   brand: 'Pizza Inn',   shop: 'Sh-08', loc: 'Sam Levy',   val: 450, qty: 1, last: '23 Mar' },
-  { supplier: 'ZimGas',        cat: 'Gas & Utilities',    brand: 'Chicken Inn', shop: 'Sh-22', loc: 'Eastgate',   val: 120, qty: 1, last: '22 Mar' },
-];
+const BREAKDOWN = [];
 
-const SUPPLIER_STATEMENTS = [
-  { ref: 'STM-2025-0412', supplier: 'CleanPro Supplies', date: '23 Mar', total: '$375.00', items: 4, status: 'SETTLED',   dueDate: '23 Mar', paidDate: '23 Mar' },
-  { ref: 'STM-2025-0411', supplier: 'Swift Maintenance', date: '23 Mar', total: '$450.00', items: 1, status: 'SETTLED',   dueDate: '23 Mar', paidDate: '23 Mar' },
-  { ref: 'STM-2025-0409', supplier: 'ZimGas Ltd',        date: '22 Mar', total: '$310.00', items: 2, status: 'SETTLED',   dueDate: '22 Mar', paidDate: '22 Mar' },
-  { ref: 'STM-2025-0407', supplier: 'OvenPro',           date: '21 Mar', total: '$450.00', items: 1, status: 'PENDING',   dueDate: '28 Mar', paidDate: null },
-  { ref: 'STM-2025-0404', supplier: 'OfficeFirst',       date: '19 Mar', total: '$89.50',  items: 3, status: 'SETTLED',   dueDate: '19 Mar', paidDate: '19 Mar' },
-  { ref: 'STM-2025-0401', supplier: 'AquaFix',           date: '15 Mar', total: '$120.00', items: 2, status: 'OVERDUE',   dueDate: '15 Mar', paidDate: null },
-];
+const SUPPLIER_STATEMENTS = [];
 
 const trendColor = (t) => t > 0 ? 'var(--ok)' : t < 0 ? 'var(--er)' : 'var(--ts)';
 const trendLabel = (t) => t === null ? '—' : t === 0 ? '0%' : `${t > 0 ? '↑' : '↓'} ${Math.abs(t)}%`;
 
 export default function ProcDashboard() {
   const { addToast, activeTab, brandFilter, setBrandFilter, currency } = useApp();
-  const hardcodedSpendMTD = 18420;
-  const hardcodedTopCategorySpend = 6840;
-  const hardcodedTopSupplierSpend = 3120;
+  const hardcodedSpendMTD = 0;
+  const hardcodedTopCategorySpend = 0;
+  const hardcodedTopSupplierSpend = 0;
   const [tab, setTab] = useState(activeTab ?? 0);
   useEffect(() => { setTab(activeTab ?? 0); }, [activeTab]);
   const [catFilter, setCatFilter] = useState('All');
@@ -133,7 +100,9 @@ export default function ProcDashboard() {
               <table className="dt">
                 <thead><tr><th>Supplier</th><th>Category</th><th>MTD Spend</th><th>Brands</th><th>Trend</th></tr></thead>
                 <tbody>
-                  {SUPPLIERS.slice(0, 5).map(s => (
+                  {SUPPLIERS.slice(0, 5).length === 0 ? (
+                    <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No data yet.</td></tr>
+                  ) : SUPPLIERS.slice(0, 5).map(s => (
                     <tr key={s.name} style={{ cursor: 'pointer' }} onClick={() => { setSupplierProfile(s); setTab(1); }}>
                       <td><strong>{s.name}</strong></td>
                       <td style={{ fontSize: 12, color: 'var(--ts)' }}>{s.cat}</td>
@@ -150,7 +119,9 @@ export default function ProcDashboard() {
               <table className="dt">
                 <thead><tr><th>Category</th><th>Products</th><th>Value</th><th>vs Last Month</th></tr></thead>
                 <tbody>
-                  {productTrendData.map(p => (
+                  {productTrendData.length === 0 ? (
+                    <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No data yet.</td></tr>
+                  ) : productTrendData.map(p => (
                     <tr key={p.name}>
                       <td><strong>{p.name}</strong></td>
                       <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{p.qty}</td>
@@ -233,7 +204,9 @@ export default function ProcDashboard() {
               <table className="dt">
                 <thead><tr><th>Code</th><th>Product Name</th><th>Category</th><th>Price</th><th>Unit</th><th>Min Order</th><th>Brands</th></tr></thead>
                 <tbody>
-                  {PRODUCTS_DATA.filter(p => p.supplier === supplierProfile.name).map(p => (
+                  {PRODUCTS_DATA.filter(p => p.supplier === supplierProfile.name).length === 0 ? (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No data yet.</td></tr>
+                  ) : PRODUCTS_DATA.filter(p => p.supplier === supplierProfile.name).map(p => (
                     <tr key={p.code}>
                       <td><code style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: 'var(--int)' }}>{p.code}</code></td>
                       <td><strong>{p.name}</strong></td>
@@ -259,7 +232,9 @@ export default function ProcDashboard() {
               <table className="dt">
                 <thead><tr><th>Supplier</th><th>Category</th><th>Department</th><th>Contact</th><th>MTD Spend</th><th>Brands</th><th>Verified</th><th>Cert. Expiry</th></tr></thead>
                 <tbody>
-                  {SUPPLIERS.map(s => (
+                  {SUPPLIERS.length === 0 ? (
+                    <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No data yet.</td></tr>
+                  ) : SUPPLIERS.map(s => (
                     <tr key={s.name} style={{ cursor: 'pointer' }} onClick={() => setSupplierProfile(s)}>
                       <td><strong>{s.name}</strong></td>
                       <td style={{ fontSize: 12, color: 'var(--ts)' }}>{s.cat}</td>
@@ -323,8 +298,8 @@ export default function ProcDashboard() {
         {tab === 3 && (<>
           <div className="kg c3">
             <div className="kc bl"><div className="kl">Total Spend (MTD)</div><div className="kv">{formatMoneyShort(hardcodedSpendMTD, currency)}</div><div className="kd up">↑ 8% vs Feb</div><div className="ki">💳</div></div>
-            <div className="kc gn"><div className="kl">Top {analyticsMode === 'product' ? 'Category' : 'Supplier'}</div><div className="kv" style={{ fontSize: 16 }}>{analyticsMode === 'product' ? 'Maintenance' : 'Swift Maintenance'}</div><div className="kd nt">{analyticsMode === 'product' ? `${formatMoneyShort(hardcodedTopCategorySpend, currency)} — 37%` : `${formatMoneyShort(hardcodedTopSupplierSpend, currency)} MTD`}</div><div className="ki">{analyticsMode === 'product' ? '🔧' : '🏭'}</div></div>
-            <div className="kc yw"><div className="kl">Trend Direction</div><div className="kv">↑ 8%</div><div className="kd nt">Overall positive</div><div className="ki">📈</div></div>
+            <div className="kc gn"><div className="kl">Top {analyticsMode === 'product' ? 'Category' : 'Supplier'}</div><div className="kv" style={{ fontSize: 16 }}>—</div><div className="kd nt">—</div><div className="ki">{analyticsMode === 'product' ? '🔧' : '🏭'}</div></div>
+            <div className="kc yw"><div className="kl">Trend Direction</div><div className="kv">—</div><div className="kd nt">Overall positive</div><div className="ki">📈</div></div>
           </div>
 
           <div className="tbbar">
@@ -345,7 +320,9 @@ export default function ProcDashboard() {
             <table className="dt">
               <thead><tr><th>Category</th><th>Total Value</th><th>Products</th><th>Brands</th><th>vs Last Month</th></tr></thead>
               <tbody>
-                {productTrendData.map(p => (
+                {productTrendData.length === 0 ? (
+                  <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No data yet.</td></tr>
+                ) : productTrendData.map(p => (
                   <tr key={p.name}>
                     <td><strong>{p.name}</strong></td>
                     <td><strong>${p.val.toLocaleString()}</strong></td>
@@ -366,7 +343,9 @@ export default function ProcDashboard() {
             <table className="dt">
               <thead><tr><th>Supplier</th><th>Category</th><th>MTD Spend</th><th>YTD Spend</th><th>Transactions</th><th>Brands</th><th>vs Last Month</th></tr></thead>
               <tbody>
-                {SUPPLIERS.map(s => (
+                {SUPPLIERS.length === 0 ? (
+                  <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No data yet.</td></tr>
+                ) : SUPPLIERS.map(s => (
                   <tr key={s.name}>
                     <td><strong>{s.name}</strong></td>
                     <td style={{ fontSize: 12, color: 'var(--ts)' }}>{s.cat}</td>
@@ -451,7 +430,7 @@ export default function ProcDashboard() {
             <div className="kc gn"><div className="kl">Verified Suppliers</div><div className="kv">{SUPPLIERS.filter(s=>s.verified).length}</div><div className="kd nt">Active on platform</div><div className="ki">✓</div></div>
             <div className="kc yw"><div className="kl">Pending Verification</div><div className="kv">{SUPPLIERS.filter(s=>!s.verified).length}</div><div className="kd nt">Awaiting review</div><div className="ki">⏳</div></div>
             <div className="kc rd"><div className="kl">Cert. Expiring (3mo)</div><div className="kv">{SUPPLIERS.filter(s=>s.cert&&new Date(s.cert)<new Date('2025-07-01')).length}</div><div className="kd dn">Action required</div><div className="ki">⚠</div></div>
-            <div className="kc bl"><div className="kl">Brands Covered</div><div className="kv">9</div><div className="kd nt">All brands onboarded</div><div className="ki">🏷</div></div>
+            <div className="kc bl"><div className="kl">Brands Covered</div><div className="kv">—</div><div className="kd nt">All brands onboarded</div><div className="ki">🏷</div></div>
           </div>
           <div className="tbbar">
             <div className="tbt">Supplier Registry</div>
@@ -460,7 +439,9 @@ export default function ProcDashboard() {
           <table className="dt">
             <thead><tr><th>Supplier</th><th>Category</th><th>InnBucks Wallet</th><th>Verified</th><th>Cert. Expiry</th><th>MTD Spend</th><th>Brands</th><th>Action</th></tr></thead>
             <tbody>
-              {SUPPLIERS.map(s => (
+              {SUPPLIERS.length === 0 ? (
+                <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No data yet.</td></tr>
+              ) : SUPPLIERS.map(s => (
                 <tr key={s.name}>
                   <td><strong>{s.name}</strong></td>
                   <td style={{ fontSize: 12, color: 'var(--ts)' }}>{s.cat}</td>

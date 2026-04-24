@@ -8,49 +8,17 @@ import DataTable from '../components/shared/DataTable';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
 
 const BRANDS_LIST = ['All Brands', 'Chicken Inn', 'Pizza Inn', 'Creamy Inn', "Nando's", 'Steers', "Roco Mamma's", 'Ocean Basket', 'Hefelies', "Pastino's"];
-const SHOPS_LIST = ['All Shops', 'Sh-03 Avondale', 'Sh-07 Avondale', 'Sh-08 Sam Levy', 'Sh-11 Highfield', 'Sh-14 Borrowdale', 'Sh-19 Eastgate', 'Sh-22 Eastgate', 'Sh-05 Borrowdale'];
-const LOCATIONS = ['All Locations', 'Avondale', 'Borrowdale', 'Eastgate', 'Sam Levy', 'Highfield'];
+const SHOPS_LIST = ['All Shops'];
+const LOCATIONS = ['All Locations'];
 const TIMEFRAMES = ['Today', 'This Week', 'This Month', 'This Quarter', 'Custom'];
 
-const BRANDS_DATA = [
-  { brand: 'Chicken Inn',  shop: 'Sh-14 Borrowdale',  location: 'Borrowdale', budget: 8000,  disbursed: 4880, shops: 14, alerts: 1, alertType: 'monitor' },
-  { brand: 'Pizza Inn',    shop: 'Sh-03 Avondale',    location: 'Avondale',   budget: 7200,  disbursed: 5328, shops: 12, alerts: 2, alertType: 'alert' },
-  { brand: 'Creamy Inn',   shop: 'Sh-11 Highfield',   location: 'Highfield',  budget: 4000,  disbursed: 1920, shops: 8,  alerts: 0 },
-  { brand: "Nando's",      shop: 'Sh-07 Avondale',    location: 'Avondale',   budget: 3200,  disbursed: 2624, shops: 6,  alerts: 1, alertType: 'alert' },
-  { brand: 'Steers',       shop: 'Sh-19 Eastgate',    location: 'Eastgate',   budget: 2400,  disbursed: 1320, shops: 5,  alerts: 0 },
-  { brand: "Roco Mamma's", shop: 'Sh-05 Borrowdale',  location: 'Borrowdale', budget: 2000,  disbursed: 1380, shops: 4,  alerts: 0 },
-  { brand: 'Ocean Basket', shop: 'Sh-22 Eastgate',    location: 'Eastgate',   budget: 1600,  disbursed: 688,  shops: 3,  alerts: 0 },
-  { brand: 'Hefelies',     shop: 'Sh-08 Sam Levy',    location: 'Sam Levy',   budget: 1200,  disbursed: 444,  shops: 2,  alerts: 0 },
-  { brand: "Pastino's",    shop: 'Sh-11 Highfield',   location: 'Highfield',  budget: 1400,  disbursed: 812,  shops: 3,  alerts: 0 },
-];
+const BRANDS_DATA = [];
 
-const EXPENSES = [
-  { id: 'PC-0041', date: '23 Mar', brand: 'Chicken Inn', shop: 'Sh-14 Borrowdale', location: 'Borrowdale', cat: 'Cleaning', supplier: 'CleanPro', amt: 180, status: 'review', wallet: 'IB-0773-8812', mgr: 'K. Mutasa' },
-  { id: 'PC-0044', date: '23 Mar', brand: 'Pizza Inn',   shop: 'Sh-03 Avondale',   location: 'Avondale',   cat: 'Maintenance', supplier: 'OvenPro', amt: 450, status: 'over', wallet: 'IB-0775-1122', mgr: 'T. Ndlovu' },
-  { id: 'PC-0039', date: '18 Mar', brand: 'Chicken Inn', shop: 'Sh-07 Avondale',   location: 'Avondale',   cat: 'Gas', supplier: 'ZimGas', amt: 120, status: 'paid', wallet: 'IB-0774-3344', mgr: 'P. Chiriseri', txn: 'IB-TXN-93391' },
-  { id: 'PC-0038', date: '17 Mar', brand: "Nando's",     shop: 'Sh-07 Avondale',   location: 'Avondale',   cat: 'Cleaning', supplier: 'CleanPro', amt: 95, status: 'paid', wallet: 'IB-0776-9900', mgr: 'M. Dube', txn: 'IB-TXN-93380' },
-  { id: 'PC-0036', date: '15 Mar', brand: 'Creamy Inn',  shop: 'Sh-11 Highfield',  location: 'Highfield',  cat: 'Stationery', supplier: 'OfficeFirst', amt: 55, status: 'paid', wallet: 'IB-0778-3312', mgr: 'B. Moyo', txn: 'IB-TXN-93350' },
-  { id: 'PC-0035', date: '12 Mar', brand: 'Steers',      shop: 'Sh-19 Eastgate',   location: 'Eastgate',   cat: 'Maintenance', supplier: 'Swift Maintenance', amt: 200, status: 'paid', wallet: 'IB-0771-2244', mgr: 'R. Mhondoro', txn: 'IB-TXN-93340' },
-  { id: 'PC-0033', date: '10 Mar', brand: 'Pizza Inn',   shop: 'Sh-08 Sam Levy',   location: 'Sam Levy',   cat: 'Emergency', supplier: 'AquaFix', amt: 280, status: 'rejected', wallet: 'IB-0772-8190', mgr: 'S. Gumbo' },
-  { id: 'PC-0031', date: '08 Mar', brand: "Roco Mamma's",shop: 'Sh-05 Borrowdale', location: 'Borrowdale', cat: 'Gas', supplier: 'ZimGas', amt: 130, status: 'paid', wallet: 'IB-0773-9910', mgr: 'J. Moyo', txn: 'IB-TXN-93310' },
-];
+const EXPENSES = [];
 
-const INNBUCKS_DATA = [
-  { brand: 'Chicken Inn',  shop: 'Sh-14 Borrowdale', location: 'Borrowdale', sales: 8420,  txns: 98, avg: 85.92,  trend: 6 },
-  { brand: 'Pizza Inn',    shop: 'Sh-03 Avondale',   location: 'Avondale',   sales: 6910,  txns: 74, avg: 93.38,  trend: 2 },
-  { brand: 'Creamy Inn',   shop: 'Sh-11 Highfield',  location: 'Highfield',  sales: 3840,  txns: 52, avg: 73.85,  trend: -4 },
-  { brand: "Nando's",      shop: 'Sh-07 Avondale',   location: 'Avondale',   sales: 2890,  txns: 31, avg: 93.23,  trend: 11 },
-  { brand: 'Steers',       shop: 'Sh-19 Eastgate',   location: 'Eastgate',   sales: 2120,  txns: 29, avg: 73.10,  trend: 0 },
-  { brand: "Roco Mamma's", shop: 'Sh-05 Borrowdale', location: 'Borrowdale', sales: null,  txns: null, avg: null, trend: null, notLive: true },
-];
+const INNBUCKS_DATA = [];
 
-const SUPPLIER_TRENDS = [
-  { name: 'Swift Maintenance', mtd: 3120, ytd: 18920, brands: 'PI, ST, CI', trend: 5, brandList: ['Pizza Inn', 'Steers', 'Chicken Inn'], shop: 'Sh-19 Eastgate', location: 'Eastgate' },
-  { name: 'CleanPro Supplies', mtd: 2340, ytd: 14100, brands: 'CI, PI, ND', trend: 12, brandList: ['Chicken Inn', 'Pizza Inn', "Nando's"], shop: 'Sh-14 Borrowdale', location: 'Borrowdale' },
-  { name: 'ZimGas Ltd',        mtd: 1870, ytd: 11220, brands: 'CI, CR, ND', trend: -3, brandList: ['Chicken Inn', 'Creamy Inn', "Nando's"], shop: 'Sh-07 Avondale', location: 'Avondale' },
-  { name: 'OvenPro',           mtd: 1200, ytd: 7200,  brands: 'PI',          trend: 22, brandList: ['Pizza Inn'], shop: 'Sh-03 Avondale', location: 'Avondale' },
-  { name: 'AquaFix',           mtd: 890,  ytd: 5340,  brands: 'CI',          trend: 0,  brandList: ['Chicken Inn'], shop: 'Sh-14 Borrowdale', location: 'Borrowdale' },
-];
+const SUPPLIER_TRENDS = [];
 
 const pctOf = (a, b) => Math.round((a / b) * 100);
 const pctColor = (p) => p >= 90 ? 'var(--er)' : p >= 70 ? 'var(--wa-t)' : 'var(--ok-t)';
@@ -65,8 +33,8 @@ export default function ExecDashboard() {
   const [shopFilter, setShopFilter] = useState('All Shops');
   const [locationFilter, setLocationFilter] = useState('All Locations');
   const [timeframe, setTimeframe] = useState('This Month');
-  const [customFrom, setCustomFrom] = useState('2025-03-01');
-  const [customTo, setCustomTo] = useState('2025-03-23');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
 
   const [detailItem, setDetailItem] = useState(null);
   const [detailType, setDetailType] = useState('');
@@ -379,7 +347,7 @@ export default function ExecDashboard() {
             <div className="kc bl"><div className="kl">Group Supplier Spend (MTD)</div><div className="kv">{formatMoneyShort(filteredSuppliers.reduce((s,t) => s+t.mtd,0), currency)}</div><div className="kd up">↑ 8% vs last month</div><div className="ki">💳</div></div>
             <div className="kc gn"><div className="kl">Group Supplier Spend (YTD)</div><div className="kv">{formatMoneyShort(filteredSuppliers.reduce((s,t) => s+t.ytd,0), currency)}</div><div className="kd nt">Across filtered brands</div><div className="ki">📊</div></div>
             <div className="kc yw"><div className="kl">Active Suppliers</div><div className="kv">{filteredSuppliers.length}</div><div className="kd nt">Matching filters</div><div className="ki">✓</div></div>
-            <div className="kc rd"><div className="kl">Cert. Alerts</div><div className="kv">3</div><div className="kd dn">Expiring within 3 months</div><div className="ki">⚠</div></div>
+            <div className="kc rd"><div className="kl">Cert. Alerts</div><div className="kv">—</div><div className="kd dn">Expiring within 3 months</div><div className="ki">⚠</div></div>
           </div>
           <div className="tbbar"><div className="tbt">Supplier Analytics — Filtered</div></div>
           <DataTable

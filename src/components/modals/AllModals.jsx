@@ -1,9 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import CvsModal from './CvsModal';
 import StatusTag from '../shared/StatusTag';
 import BrandChip from '../shared/BrandChip';
 import { BRANDS } from '../../data/mockData';
+import {
+  inviteUser,
+  listRoles,
+  listBrands,
+  createUser,
+  updateUser,
+  updateUserStatus,
+  createBrand,
+  updateBrand,
+  createShop,
+  updateShop,
+} from '../../lib/cvsApi';
+
+function extractApiError(err, fallback = 'Request failed') {
+  const data = err?.response?.data;
+  if (data?.errors) {
+    return Object.entries(data.errors)
+      .map(([k, v]) => `${k}: ${Array.isArray(v) ? v[0] : v}`)
+      .join(' · ');
+  }
+  return data?.message || err?.message || fallback;
+}
 
 /* ── Request Detail Modal ───────────────────────────────────────────────── */
 export function RequestDetailModal({ request, onClose }) {
@@ -67,31 +89,72 @@ export function RejectModal({ open, onClose, requestId, onConfirm }) {
 }
 
 /* ── Edit User Modal ────────────────────────────────────────────────────── */
-export function EditUserModal({ user, onClose }) {
+export function EditUserModal({ user, roles = [], brands = [], onClose }) {
   const { addToast } = useApp();
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [status, setStatus] = useState('active');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name || user.raw?.full_name || '');
+      setPhone(user.raw?.phone || '');
+      setStatus(user.raw?.status || 'active');
+    }
+  }, [user]);
+
   if (!user) return null;
+  const role = roles.find((r) => r.id === user.roleId);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await updateUser(user.id, {
+        full_name: name.trim(),
+        phone: phone.trim() || null,
+      });
+      if (status !== (user.raw?.status || 'active')) {
+        await updateUserStatus(user.id, status);
+      }
+      addToast('ok', 'User updated', `${name} saved`);
+      onClose(true);
+    } catch (err) {
+      addToast('er', 'Update failed', extractApiError(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <CvsModal open={!!user} onClose={onClose} title="Edit User" subtitle={user.email}
-      footer={<>
-        <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Cancel</button>
-        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} onClick={() => { onClose(); addToast('ok', 'User updated', `${user.name} role updated successfully`); }}>Save Changes</button>
-      </>}
+    <CvsModal
+      open={!!user}
+      onClose={() => onClose(false)}
+      title="Edit User"
+      subtitle={user.email}
+      footer={
+        <>
+          <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={() => onClose(false)}>Cancel</button>
+          <button className="ab pri" style={{ height: 42, padding: '0 20px' }} disabled={saving || !name.trim()} onClick={save}>{saving ? 'Saving…' : 'Save Changes'}</button>
+        </>
+      }
     >
       <div className="fg">
-        <div className="fi"><label className="fl">Full Name</label><input className="fin" defaultValue={user.name} /></div>
-        <div className="fi"><label className="fl">Email</label><input className="fin" type="email" defaultValue={user.email} readOnly /></div>
+        <div className="fi"><label className="fl">Full Name</label><input className="fin" value={name} onChange={(e) => setName(e.target.value)} /></div>
+        <div className="fi"><label className="fl">Email</label><input className="fin" type="email" value={user.email} readOnly /></div>
+        <div className="fi"><label className="fl">Phone</label><input className="fin" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Optional" /></div>
         <div className="fi">
-          <label className="fl">Role</label>
-          <select className="fsel" defaultValue={user.roleLabel}>
-            {['Shop Manager','Brand Accountant','Brand Manager','Procurement','Executive','Admin'].map(r => <option key={r}>{r}</option>)}
+          <label className="fl">Status</label>
+          <select className="fsel" value={status} onChange={(e) => setStatus(e.target.value)}>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="suspended">Suspended</option>
           </select>
         </div>
         <div className="fi">
-          <label className="fl">Brand</label>
-          <select className="fsel" defaultValue={user.brand}>
-            <option>All Brands</option>
-            {BRANDS.map(b => <option key={b}>{b}</option>)}
-          </select>
+          <label className="fl">Role</label>
+          <input className="fin" value={role?.name || '—'} readOnly />
+          <div className="fh">Role assignment is managed via invitations.</div>
         </div>
       </div>
     </CvsModal>
@@ -101,21 +164,241 @@ export function EditUserModal({ user, onClose }) {
 /* ── Revoke User Modal ──────────────────────────────────────────────────── */
 export function RevokeUserModal({ user, onClose }) {
   const { addToast } = useApp();
+  const [saving, setSaving] = useState(false);
+
   if (!user) return null;
+
+  const revoke = async () => {
+    setSaving(true);
+    try {
+      await updateUserStatus(user.id, 'inactive');
+      addToast('ok', 'Access revoked', `${user.name} has been deactivated`);
+      onClose(true);
+    } catch (err) {
+      addToast('er', 'Revoke failed', extractApiError(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <CvsModal open={!!user} onClose={onClose} title="Revoke Access" subtitle={user.email}
-      footer={<>
-        <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Cancel</button>
-        <button className="ab dan" style={{ height: 42, padding: '0 20px' }} onClick={() => { onClose(); addToast('ok', 'Access revoked', `${user.name} has been removed from CVS`); }}>Revoke Access</button>
-      </>}
+    <CvsModal
+      open={!!user}
+      onClose={() => onClose(false)}
+      title="Revoke Access"
+      subtitle={user.email}
+      footer={
+        <>
+          <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={() => onClose(false)}>Cancel</button>
+          <button className="ab dan" style={{ height: 42, padding: '0 20px' }} disabled={saving} onClick={revoke}>{saving ? 'Revoking…' : 'Revoke Access'}</button>
+        </>
+      }
     >
       <div style={{ padding: 12, background: 'var(--er-bg)', borderLeft: '3px solid var(--er)', marginBottom: 13 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--er-t)', marginBottom: 3 }}>Revoke system access for {user.name}?</div>
-        <div style={{ fontSize: 12, color: 'var(--ts)' }}>This will immediately invalidate their session and block future logins. All their pending actions will be flagged for review.</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--er-t)', marginBottom: 3 }}>Deactivate system access for {user.name}?</div>
+        <div style={{ fontSize: 12, color: 'var(--ts)' }}>Account will be marked inactive. User won't be able to log in until reactivated.</div>
       </div>
       <div className="cvs-detail-row"><span className="cvs-detail-label">Role</span><span>{user.roleLabel}</span></div>
       <div className="cvs-detail-row"><span className="cvs-detail-label">Brand</span><span>{user.brand}</span></div>
       <div className="cvs-detail-row" style={{ borderBottom: 'none' }}><span className="cvs-detail-label">Email</span><span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 12 }}>{user.email}</span></div>
+    </CvsModal>
+  );
+}
+
+/* ── Create User Modal (direct creation, no invitation) ─────────────────── */
+export function CreateUserModal({ open, onClose }) {
+  const { addToast } = useApp();
+  const [form, setForm] = useState({ full_name: '', email: '', phone: '', password: '' });
+  const [saving, setSaving] = useState(false);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const valid = form.full_name.trim() && form.email.includes('@');
+
+  const close = (changed) => {
+    onClose(changed);
+    setForm({ full_name: '', email: '', phone: '', password: '' });
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        full_name: form.full_name.trim(),
+        email: form.email.trim(),
+      };
+      if (form.phone.trim()) payload.phone = form.phone.trim();
+      if (form.password) payload.password = form.password;
+      await createUser(payload);
+      addToast('ok', 'User created', `${payload.full_name} added`);
+      close(true);
+    } catch (err) {
+      addToast('er', 'Create failed', extractApiError(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <CvsModal
+      open={!!open}
+      onClose={() => close(false)}
+      title="Create User"
+      subtitle="Direct account creation (bypasses invitation email)"
+      footer={
+        <>
+          <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={() => close(false)}>Cancel</button>
+          <button className="ab pri" style={{ height: 42, padding: '0 20px' }} disabled={!valid || saving} onClick={save}>{saving ? 'Creating…' : 'Create User'}</button>
+        </>
+      }
+    >
+      <div className="fg">
+        <div className="fi"><label className="fl">Full Name</label><input className="fin" value={form.full_name} onChange={(e) => set('full_name', e.target.value)} placeholder="First Last" /></div>
+        <div className="fi"><label className="fl">Email Address</label><input className="fin" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="name@simbisa.co.zw" /></div>
+        <div className="fi"><label className="fl">Phone</label><input className="fin" value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="Optional" /></div>
+        <div className="fi"><label className="fl">Temporary Password</label><input className="fin" type="password" value={form.password} onChange={(e) => set('password', e.target.value)} placeholder="Optional" /><div className="fh">If omitted, the backend sets its own default.</div></div>
+      </div>
+      <div style={{ marginTop: 12, padding: 10, background: 'var(--info-bg)', borderLeft: '3px solid var(--int)', fontSize: 11, color: 'var(--ts)' }}>
+        Role assignment happens via the Invitations flow. Users created here start with no role.
+      </div>
+    </CvsModal>
+  );
+}
+
+/* ── Brand Edit/Create Modal ────────────────────────────────────────────── */
+export function BrandEditModal({ brand, onClose }) {
+  const { addToast } = useApp();
+  const [form, setForm] = useState({ code: '', name: '', status: 'active' });
+  const [saving, setSaving] = useState(false);
+  const editing = !!brand?.id;
+
+  useEffect(() => {
+    if (brand) {
+      setForm({ code: brand.code || '', name: brand.name || '', status: brand.status || 'active' });
+    }
+  }, [brand]);
+
+  if (!brand) return null;
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const valid = form.code.trim() && form.name.trim();
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const payload = { code: form.code.trim(), name: form.name.trim(), status: form.status };
+      if (editing) await updateBrand(brand.id, payload);
+      else await createBrand(payload);
+      addToast('ok', editing ? 'Brand updated' : 'Brand created', form.name);
+      onClose(true);
+    } catch (err) {
+      addToast('er', 'Save failed', extractApiError(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <CvsModal
+      open={!!brand}
+      onClose={() => onClose(false)}
+      title={editing ? 'Edit Brand' : 'New Brand'}
+      subtitle={editing ? brand.name : 'Add a new brand to the catalog'}
+      footer={
+        <>
+          <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={() => onClose(false)}>Cancel</button>
+          <button className="ab pri" style={{ height: 42, padding: '0 20px' }} disabled={!valid || saving} onClick={save}>{saving ? 'Saving…' : editing ? 'Save Changes' : 'Create Brand'}</button>
+        </>
+      }
+    >
+      <div className="fg">
+        <div className="fi"><label className="fl">Code</label><input className="fin" value={form.code} onChange={(e) => set('code', e.target.value)} placeholder="e.g. CHICKEN_INN" /></div>
+        <div className="fi"><label className="fl">Name</label><input className="fin" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="e.g. Chicken Inn" /></div>
+        <div className="fi">
+          <label className="fl">Status</label>
+          <select className="fsel" value={form.status} onChange={(e) => set('status', e.target.value)}>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+      </div>
+    </CvsModal>
+  );
+}
+
+/* ── Shop Edit/Create Modal ─────────────────────────────────────────────── */
+export function ShopEditModal({ shop, brands = [], onClose }) {
+  const { addToast } = useApp();
+  const [form, setForm] = useState({ brand_id: '', code: '', name: '', location: '', status: 'active' });
+  const [saving, setSaving] = useState(false);
+  const editing = !!shop?.id;
+
+  useEffect(() => {
+    if (shop) {
+      setForm({
+        brand_id: shop.brand_id || '',
+        code: shop.code || '',
+        name: shop.name || '',
+        location: shop.location || '',
+        status: shop.status || 'active',
+      });
+    }
+  }, [shop]);
+
+  if (!shop) return null;
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const valid = form.brand_id && form.code.trim() && form.name.trim();
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        brand_id: form.brand_id,
+        code: form.code.trim(),
+        name: form.name.trim(),
+        location: form.location.trim() || null,
+        status: form.status,
+      };
+      if (editing) await updateShop(shop.id, payload);
+      else await createShop(payload);
+      addToast('ok', editing ? 'Shop updated' : 'Shop created', form.name);
+      onClose(true);
+    } catch (err) {
+      addToast('er', 'Save failed', extractApiError(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <CvsModal
+      open={!!shop}
+      onClose={() => onClose(false)}
+      title={editing ? 'Edit Shop' : 'New Shop'}
+      subtitle={editing ? shop.name : 'Add a new shop under a brand'}
+      footer={
+        <>
+          <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={() => onClose(false)}>Cancel</button>
+          <button className="ab pri" style={{ height: 42, padding: '0 20px' }} disabled={!valid || saving} onClick={save}>{saving ? 'Saving…' : editing ? 'Save Changes' : 'Create Shop'}</button>
+        </>
+      }
+    >
+      <div className="fg">
+        <div className="fi">
+          <label className="fl">Brand</label>
+          <select className="fsel" value={form.brand_id} onChange={(e) => set('brand_id', e.target.value)}>
+            <option value="">Select a brand</option>
+            {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </div>
+        <div className="fi"><label className="fl">Code</label><input className="fin" value={form.code} onChange={(e) => set('code', e.target.value)} placeholder="e.g. SHOP-014" /></div>
+        <div className="fi"><label className="fl">Name</label><input className="fin" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="e.g. Borrowdale Branch" /></div>
+        <div className="fi"><label className="fl">Location</label><input className="fin" value={form.location} onChange={(e) => set('location', e.target.value)} placeholder="e.g. Harare, Borrowdale" /></div>
+        <div className="fi">
+          <label className="fl">Status</label>
+          <select className="fsel" value={form.status} onChange={(e) => set('status', e.target.value)}>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+      </div>
     </CvsModal>
   );
 }
@@ -149,9 +432,9 @@ export function NewSupplierModal({ open, onClose }) {
 /* ── Pay Modal ──────────────────────────────────────────────────────────── */
 export function PayModal({ open, onClose, request }) {
   const { addToast } = useApp();
-  const r = request || { mgr: 'K. Mutasa', id: 'PC-0041', wallet: 'IB-0773-8812', amt: '$180.00', supplier: 'CleanPro Supplies', shop: 'Sh-14 Borrowdale' };
+  const r = request || { mgr: '', id: '', wallet: '', amt: '', supplier: '', shop: '' };
   return (
-    <CvsModal open={!!open} onClose={onClose} title="Approve & Pay via InnBucks" subtitle={`${r.id} · ${r.mgr} · Chicken Inn ${r.shop}`}
+    <CvsModal open={!!open} onClose={onClose} title="Approve & Pay via InnBucks" subtitle={[r.id, r.mgr, r.shop].filter(Boolean).join(' · ')}
       footer={<>
         <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Cancel</button>
         <button className="ab pri" style={{ height: 42, padding: '0 20px' }} onClick={() => { onClose(); addToast('ok', 'Payment sent', `${r.amt} disbursed to ${r.wallet} via InnBucks`); }}>
@@ -185,11 +468,7 @@ export function PayModal({ open, onClose, request }) {
 /* ── Batch Pay Modal ────────────────────────────────────────────────────── */
 export function BatchPayModal({ open, onClose, rows = [] }) {
   const { addToast } = useApp();
-  const defaultRows = [
-    { id: 'PC-0041', mgr: 'K. Mutasa', shop: 'Sh-14', wallet: 'IB-0773-8812', amt: '$180', type: 'exception' },
-    { id: 'PC-0039', mgr: 'P. Chiriseri', shop: 'Sh-07', wallet: 'IB-0771-2244', amt: '$200', type: 'approved' },
-    { id: 'PC-0038', mgr: 'M. Dube', shop: 'Sh-22', wallet: 'IB-0774-3344', amt: '$120', type: 'approved' },
-  ];
+  const defaultRows = [];
   const displayRows = rows.length > 0 ? rows : defaultRows;
   const total = displayRows.reduce((sum, r) => sum + parseInt(r.amt.replace('$', '')), 0);
   return (
@@ -208,7 +487,9 @@ export function BatchPayModal({ open, onClose, rows = [] }) {
       <table className="dt" style={{ marginBottom: 14 }}>
         <thead><tr><th>ID</th><th>Manager</th><th>Shop</th><th>InnBucks Number</th><th>Amount</th><th>Status</th></tr></thead>
         <tbody>
-          {displayRows.map(r => (
+          {displayRows.length === 0 ? (
+            <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No data.</td></tr>
+          ) : displayRows.map(r => (
             <tr key={r.id}>
               <td><code style={{ color: 'var(--info)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>{r.id}</code></td>
               <td>{r.mgr}</td><td>{r.shop}</td>
@@ -235,9 +516,9 @@ export function BatchPayModal({ open, onClose, rows = [] }) {
 /* ── Validate Modal ─────────────────────────────────────────────────────── */
 export function ValidateModal({ open, onClose, request }) {
   const { addToast } = useApp();
-  const [adjustedAmt, setAdjustedAmt] = useState(request?.rawAmt || 450);
+  const [adjustedAmt, setAdjustedAmt] = useState(request?.rawAmt || 0);
   const [notes, setNotes] = useState('');
-  const r = request || { id: 'PC-0044', mgr: 'T. Ndlovu', supplier: 'OvenPro Zimbabwe', rawAmt: 450, budgetStatus: 'over' };
+  const r = request || { id: '', mgr: '', supplier: '', rawAmt: 0, budgetStatus: '' };
   return (
     <CvsModal open={!!open} onClose={onClose} title="Validate Request" subtitle="Forward to Brand Manager for approval"
       footer={<>
@@ -279,7 +560,7 @@ export function ExceptionRequestModal({ open, onClose }) {
   const { addToast } = useApp();
   const [reason, setReason] = useState('');
   return (
-    <CvsModal open={!!open} onClose={onClose} title="Request Exception Approval" subtitle="PC-0041 · Sh-14 over monthly threshold"
+    <CvsModal open={!!open} onClose={onClose} title="Request Exception Approval" subtitle="Over monthly threshold"
       footer={<>
         <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Cancel</button>
         <button className="ab pri" style={{ height: 42, padding: '0 20px' }} disabled={!reason.trim()}
@@ -288,10 +569,6 @@ export function ExceptionRequestModal({ open, onClose }) {
         </button>
       </>}
     >
-      <div style={{ background: 'var(--er-bg)', borderLeft: '3px solid var(--er)', padding: 11, marginBottom: 13 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--er-t)', marginBottom: 3 }}>Threshold Exceeded</div>
-        <div style={{ fontSize: 12, color: 'var(--ts)' }}>Sh-14 at $720 of $800 limit (90%). Request of $180 would bring total to $900 — $100 over limit.</div>
-      </div>
       <label className="fl">Exception Reason (required)</label>
       <input className="fin" type="text" value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Critical operational requirement" />
       {!reason.trim() && <div className="fh" style={{ color: 'var(--er-t)', marginTop: 4 }}>Reason is required to submit</div>}
@@ -304,20 +581,16 @@ export function ExceptionApproveModal({ open, onClose }) {
   const { addToast } = useApp();
   const [notes, setNotes] = useState('');
   return (
-    <CvsModal open={!!open} onClose={onClose} title="Approve Exception" subtitle="PC-0041 · Sh-14 over limit"
+    <CvsModal open={!!open} onClose={onClose} title="Approve Exception" subtitle="Threshold override"
       footer={<>
         <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Cancel</button>
-        <button className="ab dan" style={{ height: 42, padding: '0 20px' }} onClick={() => { onClose(); addToast('er', 'Exception rejected', 'PC-0041 exception request has been rejected'); }}>Reject Exception</button>
+        <button className="ab dan" style={{ height: 42, padding: '0 20px' }} onClick={() => { onClose(); addToast('er', 'Exception rejected', 'Exception request has been rejected'); }}>Reject Exception</button>
         <button style={{ background: 'var(--pur)', borderColor: 'var(--pur)', color: '#fff', height: 42, padding: '0 20px', fontSize: 13, border: '1px solid', cursor: 'pointer', fontFamily: "'IBM Plex Sans',sans-serif" }}
-          onClick={() => { onClose(); addToast('ok', 'Exception approved and paid', 'PC-0041 $180 disbursed via InnBucks'); setNotes(''); }}>
+          onClick={() => { onClose(); addToast('ok', 'Exception approved and paid', 'Disbursed via InnBucks'); setNotes(''); }}>
           Approve Exception &amp; Pay
         </button>
       </>}
     >
-      <div style={{ background: 'var(--er-bg)', borderLeft: '3px solid var(--er)', padding: 11, marginBottom: 13 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--er-t)', marginBottom: 3 }}>Threshold Override Required</div>
-        <div style={{ fontSize: 12, color: 'var(--ts)' }}>Sh-14 at 90% of $800 limit. Approving $180 brings total to $900. Exception will be logged.</div>
-      </div>
       <label className="fl">Approval Notes</label>
       <input className="fin" type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Reason for exception approval" />
       <div style={{ marginTop: 11, fontSize: 11, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace", padding: 9, background: 'var(--l2)', border: '1px solid var(--bs)' }}>
@@ -330,12 +603,12 @@ export function ExceptionApproveModal({ open, onClose }) {
 /* ── Submit Request Modal ───────────────────────────────────────────────── */
 export function SubmitRequestModal({ open, onClose, formData }) {
   const { addToast } = useApp();
-  const data = formData || { brand: 'Chicken Inn', shop: 'Sh-14', supplier: 'CleanPro Supplies', category: 'Cleaning Supplies', amount: '180.00' };
+  const data = formData || { brand: '', shop: '', supplier: '', category: '', amount: '0.00' };
   return (
     <CvsModal open={!!open} onClose={onClose} title="Review & Submit Request"
       footer={<>
         <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Back</button>
-        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} onClick={() => { onClose(); addToast('ok', 'Request submitted', 'PC-0042 sent to Brand Accountant for review'); }}>
+        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} onClick={() => { onClose(); addToast('ok', 'Request submitted', 'Sent to Brand Accountant for review'); }}>
           Submit Request
         </button>
       </>}
@@ -350,10 +623,6 @@ export function SubmitRequestModal({ open, onClose, formData }) {
           <span className="cvs-detail-label">{row.label}</span><span>{row.value}</span>
         </div>
       ))}
-      <div style={{ marginTop: 11, padding: 10, background: 'var(--er-bg)', borderLeft: '3px solid var(--er)' }}>
-        <div style={{ fontSize: 11, color: 'var(--er-t)', fontWeight: 600 }}>⚠ Threshold Notice</div>
-        <div style={{ fontSize: 11, color: 'var(--ts)', marginTop: 2 }}>Sh-14 at 90% of monthly limit. This request will trigger exception review by Brand Accountant.</div>
-      </div>
     </CvsModal>
   );
 }
@@ -361,19 +630,13 @@ export function SubmitRequestModal({ open, onClose, formData }) {
 /* ── Budget Modal (Accountant) ──────────────────────────────────────────── */
 export function BudgetModal({ open, onClose }) {
   const { addToast } = useApp();
-  const [budgets, setBudgets] = useState([
-    { id: 'Sh-03', loc: 'Avondale',  budget: 1200, caps: '' },
-    { id: 'Sh-19', loc: 'Eastgate',  budget: 1000, caps: '' },
-    { id: 'Sh-08', loc: 'Sam Levy',  budget: 900,  caps: '' },
-    { id: 'Sh-22', loc: 'Borrowdale',budget: 1100, caps: '' },
-    { id: 'Sh-11', loc: 'Highfield', budget: 800,  caps: '' },
-  ]);
+  const [budgets, setBudgets] = useState([]);
   const update = (id, field, val) => setBudgets(b => b.map(s => s.id === id ? { ...s, [field]: val } : s));
   return (
-    <CvsModal open={!!open} onClose={onClose} size="lg" title="Set Shop Budgets — Pizza Inn" subtitle="Set monthly petty cash limits per shop"
+    <CvsModal open={!!open} onClose={onClose} size="lg" title="Set Shop Budgets" subtitle="Set monthly petty cash limits per shop"
       footer={<>
         <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Cancel</button>
-        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} onClick={() => { onClose(); addToast('ok', 'Budgets updated', `Monthly budgets saved for ${budgets.length} Pizza Inn shops`); }}>
+        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} onClick={() => { onClose(); addToast('ok', 'Budgets updated', `Monthly budgets saved for ${budgets.length} shop${budgets.length === 1 ? '' : 's'}`); }}>
           Save Budgets
         </button>
       </>}
@@ -381,7 +644,9 @@ export function BudgetModal({ open, onClose }) {
       <table className="dt">
         <thead><tr><th>Shop</th><th>Location</th><th>Current Budget</th><th>New Monthly Budget (USD)</th><th>Category Caps</th></tr></thead>
         <tbody>
-          {budgets.map(s => (
+          {budgets.length === 0 ? (
+            <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No data.</td></tr>
+          ) : budgets.map(s => (
             <tr key={s.id}>
               <td><strong>{s.id}</strong></td>
               <td>{s.loc}</td>
@@ -400,93 +665,150 @@ export function BudgetModal({ open, onClose }) {
 }
 
 /* ── Invite User Modal (Admin) ──────────────────────────────────────────── */
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const emptyInvite = { name: '', email: '', role_id: '', brand_id: '', budget: '', note: '' };
 
 export function InviteUserModal({ open, onClose }) {
-  const { addToast, session } = useApp();
-  const [form, setForm] = useState({ name: '', email: '', role: 'Shop Manager', brand: 'All Brands', shop: 'N/A', budget: '', note: '' });
+  const { addToast } = useApp();
+  const [form, setForm] = useState(emptyInvite);
+  const [roles, setRoles] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [loadingMeta, setLoadingMeta] = useState(false);
+  const [metaError, setMetaError] = useState('');
   const [sending, setSending] = useState(false);
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const valid = form.name.trim() && form.email.includes('@');
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const valid = form.name.trim() && form.email.includes('@') && form.role_id;
+  const selectedRole = roles.find((r) => r.id === form.role_id);
+  const isShopRole = selectedRole?.code === 'SHOP_MANAGER';
+  const isGlobalRole = selectedRole?.scope_type === 'global';
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    setLoadingMeta(true);
+    setMetaError('');
+    Promise.all([listRoles(), listBrands().catch(() => [])])
+      .then(([roleList, brandList]) => {
+        if (cancelled) return;
+        setRoles(roleList || []);
+        setBrands(brandList || []);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setMetaError(err?.response?.data?.message || err.message || 'Failed to load roles.');
+      })
+      .finally(() => !cancelled && setLoadingMeta(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  const close = () => {
+    onClose();
+    setForm(emptyInvite);
+  };
 
   const handleSend = async () => {
+    if (!valid || sending) return;
     setSending(true);
     try {
-      const res = await fetch(`${API_URL}/api/invite`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: form.email,
-          name: form.name,
-          role: form.role,
-          brand: form.brand,
-          shop: form.shop,
-          budget: form.budget,
-          invitedBy: session?.name || 'Administrator',
-          note: form.note,
-        }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        addToast('ok', 'Invitation sent', `Email dispatched to ${form.email} with ${form.role} access`);
-      } else {
-        addToast('er', 'Send failed', data.error || 'Could not send invitation email');
-      }
+      const payload = {
+        full_name: form.name.trim(),
+        email: form.email.trim(),
+        role_id: form.role_id,
+      };
+      if (!isGlobalRole && form.brand_id) payload.brand_id = form.brand_id;
+      if (isShopRole && form.budget) payload.monthly_budget_limit = Number(form.budget);
+      if (form.note.trim()) payload.note = form.note.trim();
+
+      await inviteUser(payload);
+      addToast('ok', 'Invitation sent', `${selectedRole?.name || 'User'} invite emailed to ${form.email}`);
+      close();
     } catch (err) {
-      addToast('wa', 'API unreachable', 'Email server is not running. Invitation saved locally.');
+      const data = err?.response?.data;
+      const fieldErrors = data?.errors
+        ? Object.entries(data.errors)
+            .map(([k, v]) => `${k}: ${(Array.isArray(v) ? v[0] : v)}`)
+            .join(' · ')
+        : '';
+      const msg = fieldErrors || data?.message || err.message || 'Could not send invitation';
+      console.error('[invite] failed', err);
+      addToast('er', 'Send failed', msg);
+    } finally {
+      setSending(false);
     }
-    setSending(false);
-    onClose();
-    setForm({ name: '', email: '', role: 'Shop Manager', brand: 'All Brands', shop: 'N/A', budget: '', note: '' });
   };
 
   return (
-    <CvsModal open={!!open} onClose={onClose} title="Invite New User" subtitle="Send email invitation with role and brand access"
-      footer={<>
-        <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Cancel</button>
-        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} disabled={!valid || sending}
-          onClick={handleSend}>
-          {sending ? 'Sending...' : 'Send Invitation'}
-        </button>
-      </>}
+    <CvsModal
+      open={!!open}
+      onClose={close}
+      title="Invite New User"
+      subtitle="Send email invitation with role and brand access"
+      footer={
+        <>
+          <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={close}>Cancel</button>
+          <button
+            className="ab pri"
+            style={{ height: 42, padding: '0 20px' }}
+            disabled={!valid || sending || loadingMeta}
+            onClick={handleSend}
+          >
+            {sending ? 'Sending…' : 'Send Invitation'}
+          </button>
+        </>
+      }
     >
       <div className="fg">
-        <div className="fi"><label className="fl">Full Name</label><input className="fin" value={form.name} onChange={e => set('name', e.target.value)} placeholder="First Last" /></div>
-        <div className="fi"><label className="fl">Email Address</label><input className="fin" type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="name@simbisa.co.zw" /></div>
+        <div className="fi">
+          <label className="fl">Full Name</label>
+          <input className="fin" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="First Last" />
+        </div>
+        <div className="fi">
+          <label className="fl">Email Address</label>
+          <input className="fin" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="name@simbisa.co.zw" />
+        </div>
         <div className="fi">
           <label className="fl">Role</label>
-          <select className="fsel" value={form.role} onChange={e => set('role', e.target.value)}>
-            {['Shop Manager','Brand Accountant','Brand Manager','Procurement','Executive','Admin'].map(r => <option key={r}>{r}</option>)}
+          <select className="fsel" value={form.role_id} onChange={(e) => set('role_id', e.target.value)} disabled={loadingMeta || !!metaError}>
+            <option value="">{loadingMeta ? 'Loading roles…' : 'Select a role'}</option>
+            {roles.map((r) => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
           </select>
         </div>
-        <div className="fi">
-          <label className="fl">Brand</label>
-          <select className="fsel" value={form.brand} onChange={e => set('brand', e.target.value)}>
-            <option>All Brands</option>
-            {BRANDS.map(b => <option key={b}>{b}</option>)}
-          </select>
-        </div>
-        {form.role === 'Shop Manager' && (
+        {!isGlobalRole && selectedRole && (
           <div className="fi">
-            <label className="fl">Shop</label>
-            <select className="fsel" value={form.shop} onChange={e => set('shop', e.target.value)}>
-              {['N/A','Sh-14 Borrowdale','Sh-07 Avondale','Sh-22 Eastgate','Sh-03 Avondale','Sh-11 Highfield'].map(s => <option key={s}>{s}</option>)}
+            <label className="fl">Brand</label>
+            <select className="fsel" value={form.brand_id} onChange={(e) => set('brand_id', e.target.value)}>
+              <option value="">— Any / none —</option>
+              {brands.map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
             </select>
           </div>
         )}
-        {form.role === 'Shop Manager' && (
+        {isShopRole && (
           <div className="fi">
             <label className="fl">Monthly Budget Limit</label>
-            <input className="fin" type="number" value={form.budget} onChange={e => set('budget', e.target.value)} placeholder="e.g. 800" />
+            <input className="fin" type="number" min="0" value={form.budget} onChange={(e) => set('budget', e.target.value)} placeholder="e.g. 800" />
             <div className="fh">Set the monthly petty cash budget for this shop</div>
           </div>
         )}
         <div className="fi full">
           <label className="fl">Note to User (in invite email)</label>
-          <input className="fin" type="text" value={form.note} onChange={e => set('note', e.target.value)} placeholder="Welcome to CVS. Click the link to set your password." />
+          <input className="fin" type="text" value={form.note} onChange={(e) => set('note', e.target.value)} placeholder="Welcome to CVS. Click the link to set your password." />
         </div>
       </div>
-      {!valid && form.name && <div style={{ marginTop: 8, fontSize: 11, color: 'var(--er-t)', fontFamily: "'IBM Plex Mono',monospace" }}>Enter a valid email address to send the invitation.</div>}
+      {metaError && (
+        <div style={{ marginTop: 8, fontSize: 11, color: 'var(--er-t)', fontFamily: "'IBM Plex Mono',monospace" }}>
+          Failed to load roles: {metaError}
+        </div>
+      )}
+      {!metaError && !valid && form.name && (
+        <div style={{ marginTop: 8, fontSize: 11, color: 'var(--er-t)', fontFamily: "'IBM Plex Mono',monospace" }}>
+          Enter a valid email and select a role.
+        </div>
+      )}
     </CvsModal>
   );
 }
@@ -494,16 +816,10 @@ export function InviteUserModal({ open, onClose }) {
 /* ── Statement Modal ────────────────────────────────────────────────────── */
 export function StatementModal({ open, onClose }) {
   const { addToast } = useApp();
-  const [filters, setFilters] = useState({ brand: 'All Brands', shop: 'All Shops', from: '2025-03-01', to: '2025-03-23', status: 'All', currency: 'USD' });
+  const [filters, setFilters] = useState({ brand: 'All Brands', shop: 'All Shops', from: '', to: '', status: 'All', currency: 'USD' });
   const setF = (k, v) => setFilters(f => ({ ...f, [k]: v }));
 
-  const allRows = [
-    { inv: 'INV-2025-4412', date: '23 Mar 14:31', brand: 'Chicken Inn', shop: 'Sh-22', amt: '$142.00', ref: 'IB-TXN-93412', status: 'SETTLED', refColor: '#24a148', statusColor: '#0e6027' },
-    { inv: 'INV-2025-4411', date: '23 Mar 14:28', brand: 'Pizza Inn',   shop: 'Sh-03', amt: '$89.50',  ref: 'IB-TXN-93411', status: 'SETTLED', refColor: '#24a148', statusColor: '#0e6027' },
-    { inv: 'INV-2025-4408', date: '23 Mar 14:18', brand: 'Creamy Inn',  shop: 'Sh-11', amt: '$36.00',  ref: 'Pending',       status: 'PENDING', refColor: '#684e00', statusColor: '#684e00' },
-    { inv: 'INV-2025-4404', date: '23 Mar 13:44', brand: 'Chicken Inn', shop: 'Sh-14', amt: '$210.00', ref: 'IB-TXN-93404', status: 'SETTLED', refColor: '#24a148', statusColor: '#0e6027' },
-    { inv: 'INV-2025-4401', date: '23 Mar 12:10', brand: 'Pizza Inn',   shop: 'Sh-19', amt: '$54.00',  ref: 'IB-TXN-93401', status: 'SETTLED', refColor: '#24a148', statusColor: '#0e6027' },
-  ];
+  const allRows = [];
   const rows = allRows.filter(r => {
     if (filters.brand !== 'All Brands' && r.brand !== filters.brand) return false;
     if (filters.shop !== 'All Shops' && r.shop !== filters.shop) return false;
@@ -530,7 +846,7 @@ export function StatementModal({ open, onClose }) {
         </div>
         <div className="fi"><label className="fl">Shop</label>
           <select className="fsel" value={filters.shop} onChange={e => setF('shop', e.target.value)}>
-            <option>All Shops</option><option>Sh-14</option><option>Sh-22</option><option>Sh-03</option><option>Sh-19</option><option>Sh-11</option>
+            <option>All Shops</option>
           </select>
         </div>
         <div className="fi"><label className="fl">From</label><input className="fin" type="date" value={filters.from} onChange={e => setF('from', e.target.value)} /></div>

@@ -5,14 +5,10 @@ import { SubmitRequestModal, NewSupplierModal } from '../components/modals/AllMo
 
 const STEPS = ['Details', 'Supplier', 'Submit'];
 const CATEGORIES = ['Maintenance & Repairs', 'Cleaning Supplies', 'Stationery', 'Gas & Utilities', 'Emergency', 'Other'];
-const SUPPLIERS = [
-  { label: 'CleanPro Supplies (CP-0012)', wallet: 'IB-0773-8812' },
-  { label: 'ZimGas Ltd (ZG-0034)', wallet: 'IB-0774-3344' },
-  { label: 'Swift Maintenance (SM-0067)', wallet: 'IB-0771-2244' },
-];
+const SUPPLIERS = [];
 
 export default function MgrNewRequest() {
-  const { navigate, openModal, addToast, modals, closeModal } = useApp();
+  const { session, navigate, openModal, addToast, modals, closeModal } = useApp();
   const [step, setStep] = useState(0);
   const [showNewSupplier, setShowNewSupplier] = useState(false);
   const [showSubmit, setShowSubmit] = useState(false);
@@ -31,7 +27,6 @@ export default function MgrNewRequest() {
     const errs = {};
     if (s === 0) {
       if (!form.amount || +form.amount <= 0) errs.amount = 'Enter a valid amount';
-      if (+form.amount > 80) errs.amount = 'Exceeds available balance of $80. An exception will be required.';
       if (!form.purpose.trim()) errs.purpose = 'Describe what funds will be used for';
     }
     if (s === 1) {
@@ -50,7 +45,7 @@ export default function MgrNewRequest() {
 
   const handleSubmit = () => {
     setShowSubmit(true);
-    addToast('ok', 'Request submitted for review', 'PC-0042 forwarded to Brand Accountant');
+    addToast('ok', 'Request submitted for review', 'Forwarded to Brand Accountant');
   };
 
   const selectedSupplier = SUPPLIERS.find(s => s.label === form.supplier);
@@ -60,8 +55,7 @@ export default function MgrNewRequest() {
       <div className="ph">
         <Breadcrumbs items={[
           { label: 'CVS' },
-          { label: 'Chicken Inn' },
-          { label: 'Sh-14' },
+          { label: session?.brand || '—' },
           { label: 'New Request' },
         ]} />
       </div>
@@ -81,12 +75,12 @@ export default function MgrNewRequest() {
           <div className="fg" style={{ marginBottom: 1 }}>
             <div className="fi">
               <label className="fl">Brand</label>
-              <select className="fsel" disabled><option>Chicken Inn</option></select>
+              <select className="fsel" disabled><option>{session?.brand || '—'}</option></select>
               <div className="fh">Locked to your assigned brand</div>
             </div>
             <div className="fi">
               <label className="fl">Shop</label>
-              <select className="fsel" disabled><option>Sh-14 Borrowdale</option></select>
+              <select className="fsel" disabled><option>—</option></select>
               <div className="fh">Locked to your assigned shop</div>
             </div>
             <div className="fi">
@@ -100,7 +94,7 @@ export default function MgrNewRequest() {
               <input className="fin" type="number" min="0" step="0.01" value={form.amount} onChange={e => set('amount', e.target.value)} placeholder="0.00" />
               {errors.amount
                 ? <div className="fh" style={{ color: 'var(--er-t)' }}>{errors.amount}</div>
-                : <div className="fh">Available: $80 of $800 limit · Threshold active</div>
+                : <div className="fh">Enter amount in USD</div>
               }
             </div>
             <div className="fi full">
@@ -155,7 +149,7 @@ export default function MgrNewRequest() {
             <div style={{ background: 'var(--l1)', border: '1px solid var(--bs)', padding: 16, marginBottom: 13 }}>
               <div style={{ fontSize: 11, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace", textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>Request Summary</div>
               {[
-                { label: 'Brand / Shop', value: 'Chicken Inn — Sh-14 Borrowdale' },
+                { label: 'Brand / Shop', value: session?.brand || '—' },
                 { label: 'Category', value: form.category },
                 { label: 'Amount (USD)', value: <span style={{ fontWeight: 700, color: 'var(--int)', fontSize: 18, fontFamily: "'IBM Plex Sans Condensed',sans-serif" }}>${parseFloat(form.amount || 0).toFixed(2)}</span> },
                 { label: 'Purpose', value: form.purpose },
@@ -169,17 +163,10 @@ export default function MgrNewRequest() {
                 </div>
               ))}
             </div>
-            {+form.amount > 80 ? (
-              <div style={{ padding: 10, background: 'var(--er-bg)', borderLeft: '3px solid var(--er)', marginBottom: 13 }}>
-                <div style={{ fontSize: 11, color: 'var(--er-t)', fontWeight: 600 }}>⚠ Threshold Notice</div>
-                <div style={{ fontSize: 11, color: 'var(--ts)', marginTop: 2 }}>Sh-14 at 90% of monthly limit. This request will trigger exception review by Brand Accountant.</div>
-              </div>
-            ) : (
-              <div style={{ padding: 10, background: 'var(--info-bg)', borderLeft: '3px solid var(--int)', marginBottom: 13 }}>
-                <div style={{ fontSize: 11, color: 'var(--info)', fontWeight: 600 }}>ℹ Review before submitting</div>
-                <div style={{ fontSize: 11, color: 'var(--ts)', marginTop: 2 }}>Once submitted, this request is forwarded to the Brand Accountant for validation. You will be notified of the outcome.</div>
-              </div>
-            )}
+            <div style={{ padding: 10, background: 'var(--info-bg)', borderLeft: '3px solid var(--int)', marginBottom: 13 }}>
+              <div style={{ fontSize: 11, color: 'var(--info)', fontWeight: 600 }}>ℹ Review before submitting</div>
+              <div style={{ fontSize: 11, color: 'var(--ts)', marginTop: 2 }}>Once submitted, this request is forwarded to the Brand Accountant for validation. You will be notified of the outcome.</div>
+            </div>
           </div>
         )}
 
@@ -199,7 +186,7 @@ export default function MgrNewRequest() {
       <SubmitRequestModal
         open={showSubmit}
         onClose={() => { setShowSubmit(false); navigate({ v: 'mgr-dashboard', lb: 'Dashboard' }, 0); }}
-        formData={{ brand: 'Chicken Inn', shop: 'Sh-14', supplier: form.supplier || 'CleanPro Supplies', category: form.category, amount: parseFloat(form.amount || 0).toFixed(2) }}
+        formData={{ brand: session?.brand || '', shop: '', supplier: form.supplier, category: form.category, amount: parseFloat(form.amount || 0).toFixed(2) }}
       />
       <NewSupplierModal open={showNewSupplier} onClose={() => setShowNewSupplier(false)} />
     </>

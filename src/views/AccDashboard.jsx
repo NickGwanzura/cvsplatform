@@ -6,36 +6,17 @@ import Breadcrumbs from '../components/shared/Breadcrumbs';
 import { ValidateModal, BudgetModal, RejectModal, RequestDetailModal } from '../components/modals/AllModals';
 import { formatMoney, formatMoneyShort, convert } from '../lib/currency';
 
-const SHOPS = [
-  { id: 'Sh-03', loc: 'Avondale',  budget: 1200, spent: 890,  pct: 74, status: 'monitor' },
-  { id: 'Sh-19', loc: 'Eastgate',  budget: 1000, spent: 450,  pct: 45, status: 'ok' },
-  { id: 'Sh-08', loc: 'Sam Levy',  budget: 900,  spent: 860,  pct: 96, status: 'alert' },
-  { id: 'Sh-22', loc: 'Borrowdale',budget: 1100, spent: 620,  pct: 56, status: 'ok' },
-  { id: 'Sh-11', loc: 'Highfield', budget: 800,  spent: 780,  pct: 97, status: 'alert' },
-];
+const SHOPS = [];
 
 // Budget burn trend across 4 weeks — per shop (multi-line)
-const BUDGET_TREND = [
-  { label: 'Wk 1', lines: [{ name: 'Sh-03', value: 180, color: '#0f62fe' }, { name: 'Sh-08', value: 210, color: '#da1e28' }, { name: 'Sh-11', value: 160, color: '#6929c4' }, { name: 'Sh-19', value: 90,  color: '#24a148' }, { name: 'Sh-22', value: 140, color: '#f1c21b' }] },
-  { label: 'Wk 2', lines: [{ name: 'Sh-03', value: 410, color: '#0f62fe' }, { name: 'Sh-08', value: 480, color: '#da1e28' }, { name: 'Sh-11', value: 390, color: '#6929c4' }, { name: 'Sh-19', value: 210, color: '#24a148' }, { name: 'Sh-22', value: 280, color: '#f1c21b' }] },
-  { label: 'Wk 3', lines: [{ name: 'Sh-03', value: 650, color: '#0f62fe' }, { name: 'Sh-08', value: 680, color: '#da1e28' }, { name: 'Sh-11', value: 590, color: '#6929c4' }, { name: 'Sh-19', value: 340, color: '#24a148' }, { name: 'Sh-22', value: 430, color: '#f1c21b' }] },
-  { label: 'Wk 4', lines: [{ name: 'Sh-03', value: 890, color: '#0f62fe' }, { name: 'Sh-08', value: 860, color: '#da1e28' }, { name: 'Sh-11', value: 780, color: '#6929c4' }, { name: 'Sh-19', value: 450, color: '#24a148' }, { name: 'Sh-22', value: 620, color: '#f1c21b' }] },
-];
+const BUDGET_TREND = [];
 
-const QUEUE_DATA = [
-  { id: 'PC-0044', mgr: 'T. Ndlovu',   shop: 'Sh-03 Avondale',   cat: 'Maintenance', supplier: 'OvenPro',     amt: '$450', rawAmt: 450, budget: 'over',   rowBg: '#fff8f8' },
-  { id: 'PC-0043', mgr: 'R. Mhondoro', shop: 'Sh-19 Eastgate',   cat: 'Cleaning',    supplier: 'CleanPro',    amt: '$95',  rawAmt: 95,  budget: 'within', rowBg: null },
-  { id: 'PC-0042', mgr: 'S. Gumbo',    shop: 'Sh-22 Borrowdale', cat: 'Stationery',  supplier: 'OfficeFirst', amt: '$45',  rawAmt: 45,  budget: 'within', rowBg: null },
-  { id: 'PC-0040', mgr: 'K. Mutasa',   shop: 'Sh-14 Borrowdale', cat: 'Gas',         supplier: 'ZimGas',      amt: '$120', rawAmt: 120, budget: 'within', rowBg: null },
-  { id: 'PC-0037', mgr: 'P. Moyo',     shop: 'Sh-08 Sam Levy',   cat: 'Emergency',   supplier: 'AquaFix',     amt: '$280', rawAmt: 280, budget: 'over',   rowBg: '#fff8f8' },
-  { id: 'PC-0036', mgr: 'B. Chikwete', shop: 'Sh-11 Highfield',  cat: 'Maintenance', supplier: 'FastFix',     amt: '$190', rawAmt: 190, budget: 'within', rowBg: null },
-  { id: 'PC-0033', mgr: 'R. Mhondoro', shop: 'Sh-19 Eastgate',   cat: 'Cleaning',    supplier: 'CleanPro',    amt: '$80',  rawAmt: 80,  budget: 'within', rowBg: null },
-];
+const QUEUE_DATA = [];
 
 const pctColor = (p) => p >= 90 ? 'var(--er)' : p >= 70 ? 'var(--wa-t)' : 'var(--ok-t)';
 
 export default function AccDashboard() {
-  const { addToast, activeTab, currency } = useApp();
+  const { addToast, activeTab, currency, session } = useApp();
   const [tab, setTab] = useState(activeTab ?? 0);
   useEffect(() => { setTab(activeTab ?? 0); }, [activeTab]);
   const [search, setSearch] = useState('');
@@ -69,7 +50,7 @@ export default function AccDashboard() {
       <div className="ph">
         <Breadcrumbs items={[
           { label: 'CVS' },
-          { label: 'Pizza Inn' },
+          { label: session?.brand || '—' },
           { label: 'Brand Accountant' },
           { label: 'Dashboard' },
         ]} />
@@ -84,39 +65,33 @@ export default function AccDashboard() {
         {/* ── Tab 0: Overview ──────────────────────────────────────────── */}
         {tab === 0 && (<>
           <div className="kg c4">
-            <div className="kc bl"><div className="kl">Total Budget — Pizza Inn</div><div className="kv">{formatMoneyShort(12400, currency)}</div><div className="kd nt">Across 12 shops this month</div><div className="ki">💳</div></div>
-            <div className="kc rd"><div className="kl">Total Disbursed</div><div className="kv">{formatMoneyShort(8820, currency)}</div><div className="kd dn">71% of total budget used</div><div className="ki">📊</div></div>
-            <div className="kc gn"><div className="kl">Remaining Budget</div><div className="kv">{formatMoneyShort(3580, currency)}</div><div className="kd up">29% available</div><div className="ki">✓</div></div>
-            <div className="kc yw"><div className="kl">Pending Requests</div><div className="kv">{QUEUE_DATA.length}</div><div className="kd nt">Awaiting your review</div><div className="ki">⏳</div></div>
+            <div className="kc bl"><div className="kl">Total Budget — {session?.brand || '—'}</div><div className="kv">—</div><div className="kd nt">Across — shops this month</div><div className="ki">💳</div></div>
+            <div className="kc rd"><div className="kl">Total Disbursed</div><div className="kv">—</div><div className="kd dn">—% of total budget used</div><div className="ki">📊</div></div>
+            <div className="kc gn"><div className="kl">Remaining Budget</div><div className="kv">—</div><div className="kd up">—% available</div><div className="ki">✓</div></div>
+            <div className="kc yw"><div className="kl">Pending Requests</div><div className="kv">—</div><div className="kd nt">Awaiting your review</div><div className="ki">⏳</div></div>
           </div>
 
           {/* Budget burn trend chart */}
           <div style={{ background: 'var(--l1)', border: '1px solid var(--bs)', padding: '14px 18px', marginBottom: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>Monthly Budget Burn — Pizza Inn Shops</div>
-                <div style={{ fontSize: 11, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace", marginTop: 2 }}>Cumulative spend per week · March 2025</div>
-              </div>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                {[['Sh-03','#0f62fe'],['Sh-08','#da1e28'],['Sh-11','#6929c4'],['Sh-19','#24a148'],['Sh-22','#f1c21b']].map(([name, color]) => (
-                  <span key={name} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: "'IBM Plex Mono',monospace", color: 'var(--ts)' }}>
-                    <span style={{ width: 12, height: 3, background: color, display: 'inline-block', borderRadius: 2 }} />
-                    {name}
-                  </span>
-                ))}
+                <div style={{ fontWeight: 600, fontSize: 13 }}>Monthly Budget Burn</div>
+                <div style={{ fontSize: 11, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace", marginTop: 2 }}>Cumulative spend per week</div>
               </div>
             </div>
             <LineChart data={BUDGET_TREND} color="#0f62fe" height={140} multiline={true} />
           </div>
 
           <div className="tbbar">
-            <div className="tbt">Budget vs Disbursed — Pizza Inn Shops</div>
+            <div className="tbt">Budget vs Disbursed — {session?.brand || '—'} Shops</div>
             <button className="ab sec" style={{ height: 34, fontSize: 12 }} onClick={() => setShowBudget(true)}>Set Budgets</button>
           </div>
           <table className="dt">
             <thead><tr><th>Shop</th><th>Location</th><th>Monthly Budget</th><th>Disbursed</th><th>Remaining</th><th>% Used</th><th>Status</th><th></th></tr></thead>
             <tbody>
-              {SHOPS.map(s => (
+              {SHOPS.length === 0 ? (
+                <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No data yet.</td></tr>
+              ) : SHOPS.map(s => (
                 <tr key={s.id}>
                   <td><strong>{s.id}</strong></td>
                   <td>{s.loc}</td>
@@ -152,7 +127,7 @@ export default function AccDashboard() {
           )}
 
           <div className="tbbar">
-            <div className="tbt">Review Queue — Pizza Inn</div>
+            <div className="tbt">Review Queue — {session?.brand || '—'}</div>
             <input className="srch" placeholder="Search ID, manager, shop…" value={search} onChange={e => setSearch(e.target.value)} />
             <select className="fsel" style={{ width: 130, height: 32, fontSize: 12 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
               <option>All</option>
@@ -195,7 +170,7 @@ export default function AccDashboard() {
         {tab === 2 && (<>
           <div className="ntf info" style={{ marginBottom: 16 }}>
             <div>
-              <div className="ntf-t">Monthly Budget Configuration — Pizza Inn</div>
+              <div className="ntf-t">Monthly Budget Configuration — {session?.brand || '—'}</div>
               <div className="ntf-b">Set per-shop limits and category caps. Threshold alerts trigger at 80% utilisation.</div>
             </div>
           </div>
@@ -209,7 +184,9 @@ export default function AccDashboard() {
           <table className="dt">
             <thead><tr><th>Shop</th><th>Location</th><th>Monthly Budget</th><th>Disbursed</th><th>Remaining</th><th>% Used</th><th>80% Threshold</th><th>Status</th></tr></thead>
             <tbody>
-              {SHOPS.map(s => (
+              {SHOPS.length === 0 ? (
+                <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No data yet.</td></tr>
+              ) : SHOPS.map(s => (
                 <tr key={s.id}>
                   <td><strong>{s.id}</strong></td>
                   <td>{s.loc}</td>

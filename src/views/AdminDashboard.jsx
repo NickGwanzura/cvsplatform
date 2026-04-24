@@ -1,60 +1,181 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import StatusTag from '../components/shared/StatusTag';
 import BrandChip from '../components/shared/BrandChip';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
-import { InviteUserModal, EditUserModal, RevokeUserModal } from '../components/modals/AllModals';
+import {
+  InviteUserModal,
+  EditUserModal,
+  RevokeUserModal,
+  CreateUserModal,
+  BrandEditModal,
+  ShopEditModal,
+} from '../components/modals/AllModals';
+import {
+  listUsers,
+  listInvitations,
+  listRoles,
+  listBrands,
+  listShops,
+  resendInvitation,
+  revokeInvite,
+} from '../lib/cvsApi';
 
-const USERS_DATA = [
-  { name: 'T. Ndlovu',   email: 't.ndlovu@simbisa.co.zw',   role: 'brandmgr',    roleLabel: 'Brand Manager',  brand: 'Chicken Inn',  shop: 'All shops', invitedBy: 'S. Moyo (Admin)', status: 'active' },
-  { name: 'C. Mutandwa', email: 'c.mutandwa@simbisa.co.zw', role: 'accountant',  roleLabel: 'Brand Accountant', brand: 'Pizza Inn',  shop: 'All shops', invitedBy: 'S. Moyo (Admin)', status: 'active' },
-  { name: 'K. Mutasa',   email: 'k.mutasa@simbisa.co.zw',   role: 'shopmgr',     roleLabel: 'Shop Manager',   brand: 'Chicken Inn',  shop: 'Sh-14',    invitedBy: 'S. Moyo (Admin)', status: 'active' },
-  { name: 'R. Chikwanda',email: 'r.chikwanda@simbisa.co.zw',role: 'procurement', roleLabel: 'Procurement',    brand: 'Head Office',  shop: 'N/A',      invitedBy: 'S. Moyo (Admin)', status: 'active' },
-  { name: 'J. Moyo',     email: 'j.moyo@simbisa.co.zw',     role: 'shopmgr',     roleLabel: 'Shop Manager',   brand: "Roco Mamma's", shop: 'Sh-05',    invitedBy: 'S. Moyo (Admin)', status: 'pending' },
-  { name: 'A. Sibanda',  email: 'a.sibanda@simbisa.co.zw',  role: 'procurement', roleLabel: 'Procurement',    brand: 'Head Office',  shop: 'N/A',      invitedBy: 'S. Moyo (Admin)', status: 'pending' },
-];
+const SYSTEM_LOGS = [];
 
-const ROLES_CONFIG = [
-  { role: 'Shop Manager',    count: 24, perms: ['Submit requests', 'View own requests', 'Track payment status', 'Request exceptions'] },
-  { role: 'Brand Accountant', count: 9, perms: ['Validate requests', 'Adjust amounts', 'Reject requests', 'Set budgets', 'View brand reports'] },
-  { role: 'Brand Manager',   count: 9,  perms: ['Approve payments', 'Batch pay via InnBucks', 'Approve exceptions', 'View brand analytics'] },
-  { role: 'Procurement',     count: 3,  perms: ['Manage suppliers', 'Verify credentials', 'View spend analytics', 'Export reports'] },
-  { role: 'Executive',       count: 2,  perms: ['View all dashboards', 'Group-wide analytics', 'InnBucks sales', 'Supplier analytics'] },
-  { role: 'Admin',           count: 1,  perms: ['Invite users', 'Manage roles', 'View system audit', 'Configure settings'] },
-];
+function fmtDate(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+  } catch { return iso; }
+}
 
-const SYSTEM_LOGS = [
-  { color: 'var(--int)', time: '23 Mar 14:32', text: '<strong>USER LOGIN</strong> — T. Ndlovu · Role: Brand Manager · Brand: Chicken Inn', user: 'IP: 196.xx.xx.xx · Chrome / Windows', chip: <BrandChip brand="Chicken Inn" /> },
-  { color: 'var(--ok)', time: '23 Mar 13:18',  text: "<strong>INVITE SENT</strong> — J. Moyo invited as Shop Manager · Roco Mamma's Sh-05",  user: 'S. Moyo (Admin)', chip: <BrandChip brand="Roco Mamma's" /> },
-  { color: 'var(--er)', time: '23 Mar 12:11',  text: '<strong>FAILED LOGIN</strong> — unknown@mail.com · 3 attempts', user: 'IP: 102.xx.xx.xx · Blocked after 3 attempts', chip: <span className="bc2" style={{ background: '#fff1f1', color: 'var(--er)' }}>SYSTEM</span> },
-  { color: 'var(--ok)', time: '23 Mar 09:05',  text: '<strong>SUPPLIER ACTIVATED</strong> — CleanPro Supplies · TIN: ZW-TIN-20012345', user: 'R. Chikwanda (Procurement)', chip: <span className="bc2" style={{ background: 'var(--pur-bg)', color: 'var(--pur)' }}>SYSTEM</span> },
-  { color: 'var(--int)', time: '22 Mar 16:44', text: '<strong>BUDGET UPDATED</strong> — Sh-08 Sam Levy budget set to $900 for March', user: 'C. Mutandwa (Brand Accountant) · Pizza Inn', chip: <BrandChip brand="Pizza Inn" /> },
-  { color: 'var(--wa)', time: '22 Mar 11:20',  text: '<strong>EXCEPTION LOGGED</strong> — PC-0041 · Sh-14 override authorised by T. Ndlovu', user: 'T. Ndlovu (Brand Manager) · Chicken Inn', chip: <BrandChip brand="Chicken Inn" /> },
-];
+function inviteStatus(inv) {
+  if (inv.revoked_at) return 'rejected';
+  if (inv.accepted_at) return 'active';
+  if (inv.expires_at && new Date(inv.expires_at) < new Date()) return 'exception';
+  return 'pending';
+}
 
 export default function AdminDashboard() {
   const { addToast, activeTab, brandFilter, setBrandFilter } = useApp();
   const [tab, setTab] = useState(activeTab ?? 0);
   useEffect(() => { setTab(activeTab ?? 0); }, [activeTab]);
+
+  const [users, setUsers] = useState([]);
+  const [invitations, setInvitations] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [shops, setShops] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+
   const [showInvite, setShowInvite] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
   const [editUser, setEditUser] = useState(null);
   const [revokeUser, setRevokeUser] = useState(null);
-  const [users, setUsers] = useState(USERS_DATA);
+  const [editBrand, setEditBrand] = useState(null);
+  const [editShop, setEditShop] = useState(null);
   const [logSearch, setLogSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
 
-  const cancelInvite = (email) => {
-    setUsers(u => u.filter(x => x.email !== email));
-    addToast('wa', 'Invite cancelled', `Invitation to ${email} has been withdrawn`);
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setLoadError('');
+    try {
+      const [u, i, r, b, s] = await Promise.all([
+        listUsers().catch(() => []),
+        listInvitations().catch(() => []),
+        listRoles().catch(() => []),
+        listBrands().catch(() => []),
+        listShops().catch(() => []),
+      ]);
+      setUsers(u || []);
+      setInvitations(i || []);
+      setRoles(r || []);
+      setBrands(b || []);
+      setShops(s || []);
+    } catch (err) {
+      setLoadError(err?.response?.data?.message || err.message || 'Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const brandById = useMemo(() => Object.fromEntries(brands.map((b) => [b.id, b])), [brands]);
+  const shopById = useMemo(() => Object.fromEntries(shops.map((s) => [s.id, s])), [shops]);
+  const roleById = useMemo(() => Object.fromEntries(roles.map((r) => [r.id, r])), [roles]);
+
+  // Build unified user+invitation list for the table.
+  const rows = useMemo(() => {
+    const userRows = users.map((u) => {
+      const assignment = u.assignments?.find((a) => a.is_active) || u.assignments?.[0];
+      const role = roleById[assignment?.role_id];
+      const brand = brandById[assignment?.brand_id];
+      const shop = shopById[assignment?.shop_id];
+      return {
+        kind: 'user',
+        id: u.id,
+        name: u.full_name || '—',
+        email: u.email,
+        roleLabel: role?.name || '—',
+        roleCode: role?.code || '',
+        roleId: role?.id,
+        brand: brand?.name || (role?.scope_type === 'global' ? 'Head Office' : '—'),
+        brandId: brand?.id,
+        shop: shop?.name || '—',
+        shopId: shop?.id,
+        invitedBy: '—',
+        status: u.status || 'active',
+        raw: u,
+      };
+    });
+    const invitationRows = invitations
+      .filter((inv) => !inv.accepted_at)
+      .map((inv) => {
+        const role = inv.role || roleById[inv.role_id];
+        const brand = inv.brand || brandById[inv.brand_id];
+        const shop = inv.shop || shopById[inv.shop_id];
+        return {
+          kind: 'invite',
+          id: inv.id,
+          name: inv.full_name || '—',
+          email: inv.email,
+          roleLabel: role?.name || '—',
+          roleCode: role?.code || '',
+          roleId: role?.id,
+          brand: brand?.name || (role?.scope_type === 'global' ? 'Head Office' : '—'),
+          brandId: brand?.id,
+          shop: shop?.name || '—',
+          shopId: shop?.id,
+          invitedBy: inv.invited_by?.full_name || '—',
+          status: inviteStatus(inv),
+          raw: inv,
+        };
+      });
+    return [...userRows, ...invitationRows];
+  }, [users, invitations, brandById, shopById, roleById]);
+
+  const activeUsers = users.length;
+  const pendingInvites = invitations.filter((i) => !i.accepted_at && !i.revoked_at).length;
+
+  // Per-role user counts for Tab 1.
+  const roleUserCount = useMemo(() => {
+    const counts = {};
+    users.forEach((u) => {
+      (u.assignments || []).forEach((a) => {
+        if (!a.is_active) return;
+        counts[a.role_id] = (counts[a.role_id] || 0) + 1;
+      });
+    });
+    return counts;
+  }, [users]);
+
+  const handleResend = async (inv) => {
+    try {
+      await resendInvitation(inv.id);
+      addToast('ok', 'Invite resent', `Email dispatched to ${inv.email}`);
+      refresh();
+    } catch (err) {
+      const msg = err?.response?.data?.message || err.message || 'Could not resend';
+      addToast('er', 'Resend failed', msg);
+    }
   };
 
-  const filteredLogs = SYSTEM_LOGS.filter(l => {
-    const matchRole = roleFilter === 'All' || l.user.includes(roleFilter);
-    const matchBrand = brandFilter === 'All Brands' || l.user.includes(brandFilter) || l.text.includes(brandFilter);
-    return matchRole && matchBrand;
-  });
+  const handleCancelInvite = async (inv) => {
+    try {
+      await revokeInvite(inv.id);
+      addToast('wa', 'Invite revoked', `Invitation to ${inv.email} has been withdrawn`);
+      refresh();
+    } catch (err) {
+      const msg = err?.response?.data?.message || err.message || 'Could not revoke';
+      addToast('er', 'Revoke failed', msg);
+    }
+  };
 
-  const tabs = ['Users & Invites', 'Roles & Permissions', 'System Audit'];
+  const tabs = ['Users & Invites', 'Roles & Permissions', 'Brands & Shops', 'System Audit'];
 
   return (
     <>
@@ -62,7 +183,7 @@ export default function AdminDashboard() {
         <Breadcrumbs items={[
           { label: 'CVS' },
           { label: 'Admin' },
-          { label: 'User Management' },
+          { label: tabs[tab] || 'User Management' },
         ]} />
         <div className="ptabs">
           {tabs.map((t, i) => (
@@ -71,46 +192,66 @@ export default function AdminDashboard() {
         </div>
       </div>
       <div className="cnt">
+        {loadError && (
+          <div className="ntf er" style={{ marginBottom: 16 }}>
+            <div>
+              <div className="ntf-t">Failed to load data</div>
+              <div className="ntf-b">{loadError}</div>
+            </div>
+            <button className="ab sec" style={{ height: 30 }} onClick={refresh}>Retry</button>
+          </div>
+        )}
 
         {/* ── Tab 0: Users & Invites ────────────────────────────────────── */}
         {tab === 0 && (<>
           <div className="kg c4">
-            <div className="kc bl"><div className="kl">Total Users</div><div className="kv">{users.filter(u => u.status === 'active').length}</div><div className="kd nt">Active accounts</div><div className="ki">👥</div></div>
-            <div className="kc yw"><div className="kl">Pending Invites</div><div className="kv">{users.filter(u => u.status === 'pending').length}</div><div className="kd nt">Awaiting acceptance</div><div className="ki">✉</div></div>
-            <div className="kc gn"><div className="kl">Active Sessions</div><div className="kv">12</div><div className="kd nt">Right now</div><div className="ki">🟢</div></div>
-            <div className="kc rd"><div className="kl">Failed Logins (24h)</div><div className="kv">3</div><div className="kd dn">Monitor</div><div className="ki">🔒</div></div>
+            <div className="kc bl"><div className="kl">Total Users</div><div className="kv">{activeUsers}</div><div className="kd nt">All accounts</div><div className="ki">👥</div></div>
+            <div className="kc yw"><div className="kl">Pending Invites</div><div className="kv">{pendingInvites}</div><div className="kd nt">Awaiting acceptance</div><div className="ki">✉</div></div>
+            <div className="kc gn"><div className="kl">Active Sessions</div><div className="kv">—</div><div className="kd nt">—</div><div className="ki">🟢</div></div>
+            <div className="kc rd"><div className="kl">Failed Logins (24h)</div><div className="kv">—</div><div className="kd nt">—</div><div className="ki">🔒</div></div>
           </div>
           <div className="tbbar">
-            <div className="tbt">User Invitations</div>
-            <button className="ab pri" onClick={() => setShowInvite(true)}>+ Invite User</button>
+            <div className="tbt">Users &amp; Invitations</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="ab sec" onClick={() => setShowCreate(true)}>+ Create User</button>
+              <button className="ab pri" onClick={() => setShowInvite(true)}>+ Invite User</button>
+            </div>
           </div>
           <table className="dt">
             <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Brand / Scope</th><th>Shop</th><th>Invited By</th><th>Status</th><th>Action</th></tr></thead>
             <tbody>
-              {users.map(u => (
-                <tr key={u.email}>
-                  <td><div style={{ fontWeight: 600 }}>{u.name}</div></td>
-                  <td style={{ fontSize: 12, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace" }}>{u.email}</td>
-                  <td><StatusTag type={u.role} /></td>
+              {loading && rows.length === 0 ? (
+                <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>Loading…</td></tr>
+              ) : rows.length === 0 ? (
+                <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No users or invitations yet.</td></tr>
+              ) : rows.map((r) => (
+                <tr key={`${r.kind}-${r.id}`}>
+                  <td><div style={{ fontWeight: 600 }}>{r.name}</div></td>
+                  <td style={{ fontSize: 12, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace" }}>{r.email}</td>
+                  <td>{r.roleLabel !== '—' ? <StatusTag type={r.roleCode?.toLowerCase()} label={r.roleLabel} /> : '—'}</td>
                   <td>
-                    {['Head Office','All Brands'].includes(u.brand)
-                      ? <span style={{ color: 'var(--ts)', fontSize: 12 }}>{u.brand}</span>
-                      : <BrandChip brand={u.brand} />
+                    {['Head Office','All Brands','—'].includes(r.brand)
+                      ? <span style={{ color: 'var(--ts)', fontSize: 12 }}>{r.brand}</span>
+                      : <BrandChip brand={r.brand} />
                     }
                   </td>
-                  <td style={{ fontSize: 12, color: 'var(--ts)' }}>{u.shop}</td>
-                  <td style={{ fontSize: 12, color: 'var(--ts)' }}>{u.invitedBy}</td>
-                  <td><StatusTag type={u.status} /></td>
+                  <td style={{ fontSize: 12, color: 'var(--ts)' }}>{r.shop}</td>
+                  <td style={{ fontSize: 12, color: 'var(--ts)' }}>{r.invitedBy}</td>
+                  <td><StatusTag type={r.status} /></td>
                   <td>
                     <div className="ra">
-                      {u.status === 'active' ? (
-                        <><button className="rb ed" onClick={() => setEditUser(u)} title="Edit user">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                      </button>
-                          <button className="rb rj" onClick={() => setRevokeUser(u)}>Revoke</button></>
+                      {r.kind === 'user' ? (
+                        <>
+                          <button className="rb ed" onClick={() => setEditUser(r)} title="Edit user">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                          </button>
+                          <button className="rb rj" onClick={() => setRevokeUser(r)}>Revoke</button>
+                        </>
                       ) : (
-                        <><button className="rb ap" onClick={() => addToast('ok', 'Invite resent', `Email dispatched to ${u.email}`)}>Resend</button>
-                          <button className="rb rj" onClick={() => cancelInvite(u.email)}>Cancel</button></>
+                        <>
+                          <button className="rb ap" onClick={() => handleResend(r.raw)}>Resend</button>
+                          <button className="rb rj" onClick={() => handleCancelInvite(r.raw)}>Cancel</button>
+                        </>
                       )}
                     </div>
                   </td>
@@ -125,91 +266,139 @@ export default function AdminDashboard() {
           <div className="ntf info" style={{ marginBottom: 16 }}>
             <div>
               <div className="ntf-t">Role-Based Access Control</div>
-              <div className="ntf-b">CVS uses a strict role hierarchy. Each role has defined permissions. Contact system admin to adjust role permissions.</div>
+              <div className="ntf-b">Roles and their permissions are defined server-side. Contact the backend team to adjust role permissions.</div>
             </div>
           </div>
           <div className="kg c3">
-            <div className="kc bl"><div className="kl">Total Roles</div><div className="kv">{ROLES_CONFIG.length}</div><div className="kd nt">Defined in system</div><div className="ki">🔑</div></div>
-            <div className="kc gn"><div className="kl">Total Users</div><div className="kv">{ROLES_CONFIG.reduce((s,r) => s+r.count, 0)}</div><div className="kd nt">Across all roles</div><div className="ki">👥</div></div>
-            <div className="kc yw"><div className="kl">Pending</div><div className="kv">{users.filter(u => u.status === 'pending').length}</div><div className="kd nt">Invites outstanding</div><div className="ki">⏳</div></div>
+            <div className="kc bl"><div className="kl">Total Roles</div><div className="kv">{roles.length}</div><div className="kd nt">Defined in system</div><div className="ki">🔑</div></div>
+            <div className="kc gn"><div className="kl">Total Users</div><div className="kv">{users.length}</div><div className="kd nt">Across all roles</div><div className="ki">👥</div></div>
+            <div className="kc yw"><div className="kl">Pending</div><div className="kv">{pendingInvites}</div><div className="kd nt">Invites outstanding</div><div className="ki">⏳</div></div>
           </div>
           <div className="tbbar"><div className="tbt">Role Definitions &amp; Permissions</div></div>
           <table className="dt">
-            <thead><tr><th>Role</th><th>Users</th><th>Permissions</th><th>Access Level</th><th>Action</th></tr></thead>
+            <thead><tr><th>Role</th><th>Users</th><th>Scope</th><th>Permissions</th></tr></thead>
             <tbody>
-              {ROLES_CONFIG.map((r, i) => (
-                <tr key={r.role}>
+              {loading && roles.length === 0 ? (
+                <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>Loading…</td></tr>
+              ) : roles.length === 0 ? (
+                <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No roles available.</td></tr>
+              ) : roles.map((r) => (
+                <tr key={r.id}>
                   <td>
-                    <div style={{ fontWeight: 600 }}>{r.role}</div>
-                    <div style={{ fontSize: 10, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace", marginTop: 2 }}>ROLE-{String(i+1).padStart(2,'0')}</div>
+                    <div style={{ fontWeight: 600 }}>{r.name}</div>
+                    <div style={{ fontSize: 10, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace", marginTop: 2 }}>{r.code}</div>
                   </td>
-                  <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600 }}>{r.count}</td>
+                  <td style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 13, fontWeight: 600 }}>{roleUserCount[r.id] || 0}</td>
+                  <td style={{ fontSize: 12, color: 'var(--ts)', textTransform: 'capitalize' }}>{r.scope_type || '—'}</td>
                   <td>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                      {r.perms.map(p => (
-                        <span key={p} style={{ background: 'var(--info-bg)', color: 'var(--info)', fontSize: 10, padding: '2px 6px', fontFamily: "'IBM Plex Mono',monospace" }}>{p}</span>
+                      {(r.permissions || []).map((p) => (
+                        <span key={p.id} style={{ background: 'var(--info-bg)', color: 'var(--info)', fontSize: 10, padding: '2px 6px', fontFamily: "'IBM Plex Mono',monospace" }}>{p.code}</span>
                       ))}
                     </div>
                   </td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <div style={{ width: 60, height: 6, background: 'var(--l3)' }}>
-                        <div style={{ height: '100%', width: `${(6-i)/6*100}%`, background: 'var(--int)' }} />
-                      </div>
-                      <span style={{ fontSize: 10, fontFamily: "'IBM Plex Mono',monospace", color: 'var(--ts)' }}>{Math.round((6-i)/6*100)}%</span>
-                    </div>
-                  </td>
-                  <td><button className="rb ed" onClick={() => addToast('info', `Edit ${r.role}`, 'Role permission editor opened')} title="Edit role">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                      </button></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </>)}
 
-        {/* ── Tab 2: System Audit ───────────────────────────────────────── */}
+        {/* ── Tab 2: Brands & Shops ─────────────────────────────────────── */}
         {tab === 2 && (<>
+          <div className="kg c3">
+            <div className="kc bl"><div className="kl">Total Brands</div><div className="kv">{brands.length}</div><div className="kd nt">Active brands</div><div className="ki">🏷️</div></div>
+            <div className="kc gn"><div className="kl">Total Shops</div><div className="kv">{shops.length}</div><div className="kd nt">Across all brands</div><div className="ki">🏬</div></div>
+            <div className="kc yw"><div className="kl">Unassigned Shops</div><div className="kv">{shops.filter((s) => !s.brand_id).length}</div><div className="kd nt">No brand set</div><div className="ki">⚠</div></div>
+          </div>
+
+          <div className="tbbar">
+            <div className="tbt">Brands</div>
+            <button className="ab pri" onClick={() => setEditBrand({})}>+ New Brand</button>
+          </div>
+          <table className="dt">
+            <thead><tr><th>Code</th><th>Name</th><th>Status</th><th>Shops</th><th>Action</th></tr></thead>
+            <tbody>
+              {loading && brands.length === 0 ? (
+                <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>Loading…</td></tr>
+              ) : brands.length === 0 ? (
+                <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No brands yet.</td></tr>
+              ) : brands.map((b) => (
+                <tr key={b.id}>
+                  <td><code style={{ color: 'var(--info)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>{b.code}</code></td>
+                  <td><div style={{ fontWeight: 600 }}>{b.name}</div></td>
+                  <td><StatusTag type={b.status} /></td>
+                  <td style={{ fontSize: 12, color: 'var(--ts)' }}>{shops.filter((s) => s.brand_id === b.id).length}</td>
+                  <td>
+                    <button className="rb ed" onClick={() => setEditBrand(b)} title="Edit brand">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="tbbar" style={{ marginTop: 24 }}>
+            <div className="tbt">Shops</div>
+            <button className="ab pri" onClick={() => setEditShop({})} disabled={brands.length === 0}>+ New Shop</button>
+          </div>
+          <table className="dt">
+            <thead><tr><th>Code</th><th>Name</th><th>Brand</th><th>Location</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody>
+              {loading && shops.length === 0 ? (
+                <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>Loading…</td></tr>
+              ) : shops.length === 0 ? (
+                <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No shops yet.</td></tr>
+              ) : shops.map((s) => (
+                <tr key={s.id}>
+                  <td><code style={{ color: 'var(--info)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>{s.code}</code></td>
+                  <td><div style={{ fontWeight: 600 }}>{s.name}</div></td>
+                  <td>{s.brand?.name ? <BrandChip brand={s.brand.name} /> : <span style={{ color: 'var(--ts)', fontSize: 12 }}>—</span>}</td>
+                  <td style={{ fontSize: 12, color: 'var(--ts)' }}>{s.location || '—'}</td>
+                  <td><StatusTag type={s.status} /></td>
+                  <td>
+                    <button className="rb ed" onClick={() => setEditShop(s)} title="Edit shop">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>)}
+
+        {/* ── Tab 3: System Audit (backend not yet available) ──────────── */}
+        {tab === 3 && (<>
           <div className="kg c4">
-            <div className="kc bl"><div className="kl">Audit Events (24h)</div><div className="kv">{SYSTEM_LOGS.length}</div><div className="kd nt">Total logged actions</div><div className="ki">📋</div></div>
-            <div className="kc gn"><div className="kl">User Logins</div><div className="kv">34</div><div className="kd up">↑ Active sessions</div><div className="ki">🔑</div></div>
-            <div className="kc rd"><div className="kl">Failed Attempts</div><div className="kv">3</div><div className="kd dn">1 IP blocked</div><div className="ki">🔒</div></div>
-            <div className="kc yw"><div className="kl">System Events</div><div className="kv">8</div><div className="kd nt">Auto-generated</div><div className="ki">⚙</div></div>
+            <div className="kc bl"><div className="kl">Audit Events (24h)</div><div className="kv">—</div><div className="kd nt">—</div><div className="ki">📋</div></div>
+            <div className="kc gn"><div className="kl">User Logins</div><div className="kv">—</div><div className="kd nt">—</div><div className="ki">🔑</div></div>
+            <div className="kc rd"><div className="kl">Failed Attempts</div><div className="kv">—</div><div className="kd nt">—</div><div className="ki">🔒</div></div>
+            <div className="kc yw"><div className="kl">System Events</div><div className="kv">—</div><div className="kd nt">—</div><div className="ki">⚙</div></div>
           </div>
           <div className="tbbar">
-            <div className="tbt">System Audit Log — All Users</div>
-            <input className="srch" placeholder="Search logs…" value={logSearch} onChange={e => setLogSearch(e.target.value)} />
-            <select className="fsel" style={{ width: 150, height: 32, fontSize: 12 }} value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
+            <div className="tbt">System Audit Log</div>
+            <input className="srch" placeholder="Search logs…" value={logSearch} onChange={(e) => setLogSearch(e.target.value)} />
+            <select className="fsel" style={{ width: 150, height: 32, fontSize: 12 }} value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
               <option value="All">All Roles</option>
-              <option>Brand Manager</option><option>Brand Accountant</option><option>Procurement</option><option>Admin</option>
+              {roles.map((r) => <option key={r.id}>{r.name}</option>)}
             </select>
-            <select className="fsel" style={{ width: 130, height: 32, fontSize: 12 }} value={brandFilter} onChange={e => setBrandFilter(e.target.value)}>
+            <select className="fsel" style={{ width: 130, height: 32, fontSize: 12 }} value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)}>
               <option value="All Brands">All Brands</option>
-              <option>Chicken Inn</option><option>Pizza Inn</option><option>Creamy Inn</option><option>Nando's</option><option>Steers</option><option>Roco Mamma's</option><option>Ocean Basket</option><option>Hefelies</option><option>Pastino's</option>
+              {brands.map((b) => <option key={b.id}>{b.name}</option>)}
             </select>
           </div>
           <div style={{ background: 'var(--l1)', border: '1px solid var(--bs)', padding: '8px 14px' }}>
-            {filteredLogs.length === 0
-              ? <div style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No audit events match the selected filters.</div>
-              : filteredLogs.filter(e => !logSearch || e.text.toLowerCase().includes(logSearch.toLowerCase()) || e.user.toLowerCase().includes(logSearch.toLowerCase())).map((e, i) => (
-                <div className="log-e" key={i}>
-                  <div className="log-dot" style={{ background: e.color }} />
-                  <div className="log-time">{e.time}</div>
-                  <div style={{ flex: 1 }}>
-                    <div className="log-txt" dangerouslySetInnerHTML={{ __html: e.text }} />
-                    <div className="log-user">{e.user}</div>
-                  </div>
-                  {e.chip}
-                </div>
-              ))
-            }
+            <div style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>Audit log endpoint not yet available on the backend.</div>
           </div>
         </>)}
       </div>
 
-      <InviteUserModal open={showInvite} onClose={() => setShowInvite(false)} />
-      <EditUserModal user={editUser} onClose={() => setEditUser(null)} />
-      <RevokeUserModal user={revokeUser} onClose={() => setRevokeUser(null)} />
+      <InviteUserModal open={showInvite} onClose={() => { setShowInvite(false); refresh(); }} />
+      <CreateUserModal open={showCreate} onClose={() => { setShowCreate(false); refresh(); }} />
+      <EditUserModal user={editUser} roles={roles} brands={brands} onClose={(changed) => { setEditUser(null); if (changed) refresh(); }} />
+      <RevokeUserModal user={revokeUser} onClose={(changed) => { setRevokeUser(null); if (changed) refresh(); }} />
+      <BrandEditModal brand={editBrand} onClose={(changed) => { setEditBrand(null); if (changed) refresh(); }} />
+      <ShopEditModal shop={editShop} brands={brands} onClose={(changed) => { setEditShop(null); if (changed) refresh(); }} />
     </>
   );
 }
