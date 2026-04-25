@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import StatusTag from '../components/shared/StatusTag';
 import LineChart from '../components/shared/LineChart';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
+import EndpointPendingBanner from '../components/shared/EndpointPendingBanner';
 import { ValidateModal, BudgetModal, RejectModal, RequestDetailModal } from '../components/modals/AllModals';
 import { formatMoney, formatMoneyShort, convert } from '../lib/currency';
 
@@ -64,6 +65,11 @@ export default function AccDashboard() {
 
         {/* ── Tab 0: Overview ──────────────────────────────────────────── */}
         {tab === 0 && (<>
+          <EndpointPendingBanner
+            feature="Brand budget overview and per-shop summaries"
+            endpoints={['GET /api/v1/cash-entries?brand_id=:id', 'GET /api/v1/reports/brand', 'GET /api/v1/reports/shop']}
+            note="cash_entries.view + reports.brand.view + reports.shop.view permissions are seeded on BRAND_ACCOUNTANT but the routes 404."
+          />
           <div className="kg c4">
             <div className="kc bl"><div className="kl">Total Budget — {session?.brand || '—'}</div><div className="kv">—</div><div className="kd nt">Across — shops this month</div><div className="ki">💳</div></div>
             <div className="kc rd"><div className="kl">Total Disbursed</div><div className="kv">—</div><div className="kd dn">—% of total budget used</div><div className="ki">📊</div></div>
@@ -109,6 +115,11 @@ export default function AccDashboard() {
 
         {/* ── Tab 1: Review Queue ───────────────────────────────────────── */}
         {tab === 1 && (<>
+          <EndpointPendingBanner
+            feature="The cash-entries review queue (validate / approve / reject)"
+            endpoints={['GET /api/v1/cash-entries?status=submitted', 'POST /api/v1/cash-entries/:id/approve', 'POST /api/v1/cash-entries/:id/reject']}
+            note="cash_entries.approve is seeded on BRAND_ACCOUNTANT but the routes 404. Approve/reject endpoints are guesses pending backend confirmation."
+          />
           <div className="kg c4">
             <div className="kc yw"><div className="kl">Pending Review</div><div className="kv">{QUEUE_DATA.length}</div><div className="kd nt">Awaiting validation</div><div className="ki">⏳</div></div>
             <div className="kc rd"><div className="kl">Over Budget Limit</div><div className="kv">{QUEUE_DATA.filter(q => q.budget === 'over').length}</div><div className="kd dn">Require exception approval</div><div className="ki">⚠</div></div>
@@ -168,6 +179,11 @@ export default function AccDashboard() {
 
         {/* ── Tab 2: Budget Management ──────────────────────────────────── */}
         {tab === 2 && (<>
+          <EndpointPendingBanner
+            feature="Per-shop monthly budget configuration"
+            endpoints={['GET /api/v1/budgets', 'PUT /api/v1/budgets/:shopId', 'GET /api/v1/reports/brand']}
+            note="No budget-related permission codes are seeded yet — the budgets module appears unstarted on the backend."
+          />
           <div className="ntf info" style={{ marginBottom: 16 }}>
             <div>
               <div className="ntf-t">Monthly Budget Configuration — {session?.brand || '—'}</div>

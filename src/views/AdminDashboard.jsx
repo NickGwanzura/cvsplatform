@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import StatusTag from '../components/shared/StatusTag';
 import BrandChip from '../components/shared/BrandChip';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
+import EndpointPendingBanner from '../components/shared/EndpointPendingBanner';
 import {
   InviteUserModal,
   EditUserModal,
@@ -406,6 +407,11 @@ export default function AdminDashboard() {
 
         {/* ── Tab 3: System Audit (backend not yet available) ──────────── */}
         {tab === 3 && (<>
+          <EndpointPendingBanner
+            feature="The system audit log"
+            endpoints={['GET /api/v1/audit-logs', 'GET /api/v1/audit-logs?user_id=:id', 'GET /api/v1/audit-logs?brand_id=:id']}
+            note="audit_logs.view permission is seeded on ADMIN but no /audit-logs route is registered yet."
+          />
           <div className="kg c4">
             <div className="kc bl"><div className="kl">Audit Events (24h)</div><div className="kv">—</div><div className="kd nt">—</div><div className="ki">📋</div></div>
             <div className="kc gn"><div className="kl">User Logins</div><div className="kv">—</div><div className="kd nt">—</div><div className="ki">🔑</div></div>
@@ -425,7 +431,7 @@ export default function AdminDashboard() {
             </select>
           </div>
           <div style={{ background: 'var(--l1)', border: '1px solid var(--bs)', padding: '8px 14px' }}>
-            <div style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>Audit log endpoint not yet available on the backend.</div>
+            <div style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>—</div>
           </div>
         </>)}
       </div>

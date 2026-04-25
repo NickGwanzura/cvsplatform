@@ -6,6 +6,7 @@ import StatusTag from '../components/shared/StatusTag';
 import CvsModal from '../components/modals/CvsModal';
 import DataTable from '../components/shared/DataTable';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
+import EndpointPendingBanner from '../components/shared/EndpointPendingBanner';
 
 const BRANDS_LIST = ['All Brands', 'Chicken Inn', 'Pizza Inn', 'Creamy Inn', "Nando's", 'Steers', "Roco Mamma's", 'Ocean Basket', 'Hefelies', "Pastino's"];
 const SHOPS_LIST = ['All Shops'];
@@ -120,6 +121,11 @@ export default function ExecDashboard() {
 
         {/* ── Tab 0: Group Overview ─────────────────────────────────────── */}
         {tab === 0 && (<>
+          <EndpointPendingBanner
+            feature="Group-wide executive overview"
+            endpoints={['GET /api/v1/reports/executive', 'GET /api/v1/cash-entries (aggregated)', 'GET /api/v1/reports/export']}
+            note="reports.executive.view + reports.export are seeded on EXECUTIVE but the routes 404. The InnBucks / petty-cash aggregations also have no permission codes."
+          />
           <div className="kg c4">
             <div className="kc bl"><div className="kl">Total Petty Cash Disbursed (MTD)</div><div className="kv">{formatMoneyShort(totalDisbursed, currency)}</div><div className="kd up">↑ 8% vs February</div><div className="ki">💳</div></div>
             <div className="kc gn"><div className="kl">InnBucks Sales — All Brands</div><div className="kv">{formatMoneyShort(totalSales, currency)}</div><div className="kd up">↑ Today's total</div><div className="ki">📈</div></div>
@@ -195,6 +201,11 @@ export default function ExecDashboard() {
 
         {/* ── Tab 1: Brand Breakdown ────────────────────────────────────── */}
         {tab === 1 && (<>
+          <EndpointPendingBanner
+            feature="Per-brand spend breakdown"
+            endpoints={['GET /api/v1/reports/executive?group_by=brand']}
+            note="reports.executive.view is seeded but the /reports module has no registered routes."
+          />
           <div className="kg c4">
             <div className="kc bl"><div className="kl">Brands on Platform</div><div className="kv">{filteredBrands.length}</div><div className="kd nt">All reporting</div><div className="ki">🏷</div></div>
             <div className="kc gn"><div className="kl">On Budget (&lt;70%)</div><div className="kv">{filteredBrands.filter(b => pctOf(b.disbursed,b.budget) < 70).length}</div><div className="kd up">No action required</div><div className="ki">✓</div></div>
@@ -231,6 +242,11 @@ export default function ExecDashboard() {
 
         {/* ── Tab 2: Petty Cash Expenses ────────────────────────────────── */}
         {tab === 2 && (<>
+          <EndpointPendingBanner
+            feature="Group-wide petty cash expense feed"
+            endpoints={['GET /api/v1/cash-entries', 'GET /api/v1/reports/executive?type=expenses']}
+            note="cash_entries module has permissions seeded but no routes registered yet."
+          />
           <div className="kg c4">
             <div className="kc bl"><div className="kl">Total Expenses</div><div className="kv">{filteredExpenses.length}</div><div className="kd nt">Filtered results</div><div className="ki">💳</div></div>
             <div className="kc gn"><div className="kl">Total Value</div><div className="kv">{formatMoneyShort(filteredExpenses.reduce((s,e) => s+e.amt, 0), currency)}</div><div className="kd nt">Sum of all expenses</div><div className="ki">📊</div></div>
@@ -309,6 +325,11 @@ export default function ExecDashboard() {
 
         {/* ── Tab 3: InnBucks Sales ─────────────────────────────────────── */}
         {tab === 3 && (<>
+          <EndpointPendingBanner
+            feature="Group-wide InnBucks sales rollup"
+            endpoints={['GET /api/v1/innbucks', 'GET /api/v1/reports/executive?type=sales']}
+            note="No permission codes are seeded for the InnBucks / sales module yet — the backend feature appears unstarted."
+          />
           <div className="kg c4">
             <div className="kc gn"><div className="kl">Total Sales Today</div><div className="kv">{formatMoneyShort(totalSales, currency)}</div><div className="kd up">↑ 4.2% vs yesterday</div><div className="ki">📈</div></div>
             <div className="kc bl"><div className="kl">Total Transactions</div><div className="kv">{totalTxns}</div><div className="kd up">Settled today</div><div className="ki">✓</div></div>

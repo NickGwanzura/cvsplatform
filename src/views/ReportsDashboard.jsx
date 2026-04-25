@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
+import EndpointPendingBanner from '../components/shared/EndpointPendingBanner';
 
 const BRANDS_LIST = ['All Brands', 'Chicken Inn', 'Pizza Inn', 'Creamy Inn', "Nando's", 'Steers', "Roco Mamma's", 'Ocean Basket', 'Hefelies', "Pastino's"];
 const SHOPS_LIST = ['All Shops'];
@@ -59,6 +60,11 @@ export default function ReportsDashboard() {
         </div>
       </div>
       <div className="cnt">
+        <EndpointPendingBanner
+          feature="The reports library and recent-downloads history"
+          endpoints={['GET /api/v1/reports', 'POST /api/v1/reports/:id/generate', 'GET /api/v1/reports/export']}
+          note="reports.{shop, brand, executive}.view + reports.export permissions are seeded across roles, but no /reports route is registered on the backend yet."
+        />
 
         {/* ── Tab 0: Report Library ─────────────────────────────────── */}
         {tab === 0 && (<>
