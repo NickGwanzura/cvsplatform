@@ -1,4 +1,4 @@
-export default function EndpointPendingBanner({ endpoints, feature, style }) {
+export default function EndpointPendingBanner({ endpoints, feature, note, style }) {
   const list = Array.isArray(endpoints) ? endpoints : [endpoints];
   return (
     <div className="ntf wa" style={{ marginBottom: 12, ...style }}>
@@ -13,6 +13,9 @@ export default function EndpointPendingBanner({ endpoints, feature, style }) {
             </span>
           ))}
           . This screen will light up once the API ships — showing empty state for now.
+          {note && (
+            <div style={{ marginTop: 6, fontSize: 11, color: 'var(--ts)', fontStyle: 'italic' }}>{note}</div>
+          )}
         </div>
       </div>
     </div>

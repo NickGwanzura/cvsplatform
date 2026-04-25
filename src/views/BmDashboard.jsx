@@ -66,7 +66,8 @@ export default function BmDashboard() {
         {tab === 0 && (<>
           <EndpointPendingBanner
             feature="The approvals queue"
-            endpoints={['GET /api/v1/approvals', 'POST /api/v1/payments', 'POST /api/v1/approvals/:id/reject']}
+            endpoints={['GET /api/v1/cash-entries?status=approved', 'POST /api/v1/cash-entries/:id/reject', 'POST /api/v1/payments']}
+            note="cash_entries.{view, submit} are seeded on BRAND_MANAGER and cash_entries.approve on BRAND_ACCOUNTANT, but none of the routes exist yet. /payments has no permission code seeded — the disbursement module looks unstarted."
           />
           <div className="kg c4">
             <div className="kc yw"><div className="kl">Pending Approvals</div><div className="kv">{APPROVALS.length}</div><div className="kd nt">Validated by Accountant</div><div className="ki">⏳</div></div>
@@ -121,6 +122,7 @@ export default function BmDashboard() {
           <EndpointPendingBanner
             feature="Live transactions, daily sales and reconciliation"
             endpoints={['GET /api/v1/innbucks', 'GET /api/v1/daily-sales', 'GET /api/v1/reconciliation']}
+            note="No permission codes are seeded for InnBucks / sales / recon yet — these paths are speculative and the backend module hasn't been scaffolded."
           />
           <div className="kg c4">
             <div className="kc gn"><div className="kl">Today's Sales</div><div className="kv">${totalSales.toFixed(2)}</div><div className="kd up">↑ {INNBUCKS.filter(r => r.status === 'settled').length} transactions settled</div><div className="ki">📈</div></div>

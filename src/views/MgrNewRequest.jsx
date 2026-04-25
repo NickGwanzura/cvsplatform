@@ -179,8 +179,9 @@ export default function MgrNewRequest() {
         {step === 2 && (
           <div>
             <EndpointPendingBanner
-              feature="Submitting a request"
-              endpoints={['POST /api/v1/requests']}
+              feature="Submitting a cash entry"
+              endpoints={['POST /api/v1/cash-entries', 'POST /api/v1/cash-entries/:id/submit']}
+              note="cash_entries.create + cash_entries.submit permissions are seeded but the routes 404. The form will go through once the backend registers them."
             />
             <div style={{ background: 'var(--l1)', border: '1px solid var(--bs)', padding: 16, marginBottom: 13 }}>
               <div style={{ fontSize: 11, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace", textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>Request Summary</div>

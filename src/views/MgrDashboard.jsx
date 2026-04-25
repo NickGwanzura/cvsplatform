@@ -23,8 +23,9 @@ export default function MgrDashboard() {
       </div>
       <div className="cnt">
         <EndpointPendingBanner
-          feature="The shop requests workflow"
-          endpoints={['GET /api/v1/requests', 'POST /api/v1/requests', 'GET /api/v1/budgets']}
+          feature="The shop cash-entries workflow"
+          endpoints={['GET /api/v1/cash-entries', 'POST /api/v1/cash-entries', 'POST /api/v1/cash-entries/:id/submit']}
+          note="The cash_entries.{view, create, submit} permissions are seeded on the SHOP_MANAGER role but no HTTP routes have been registered yet."
         />
         <div className="kg c4">
           <div className="kc bl"><div className="kl">Monthly Budget</div><div className="kv">—</div><div className="kd nt">—</div><div className="ki">💳</div></div>
