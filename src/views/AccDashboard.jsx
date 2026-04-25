@@ -6,8 +6,7 @@ import Breadcrumbs from '../components/shared/Breadcrumbs';
 import EndpointPendingBanner from '../components/shared/EndpointPendingBanner';
 import { ValidateModal, BudgetModal, RejectModal, RequestDetailModal } from '../components/modals/AllModals';
 import { formatMoney, formatMoneyShort, convert } from '../lib/currency';
-
-const SHOPS = [];
+import { listShops } from '../lib/cvsApi';
 
 // Budget burn trend across 4 weeks — per shop (multi-line)
 const BUDGET_TREND = [];
@@ -28,6 +27,31 @@ export default function AccDashboard() {
   const [validateTarget, setValidateTarget] = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
   const [viewShop, setViewShop] = useState(null);
+  const [shopsRaw, setShopsRaw] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    listShops()
+      .then((list) => !cancelled && setShopsRaw(Array.isArray(list) ? list : []))
+      .catch(() => !cancelled && setShopsRaw([]));
+    return () => { cancelled = true; };
+  }, []);
+
+  // Map API shops into the shape the existing UI consumes. Budget/disbursed
+  // metrics aren't available from the backend yet — default to 0 so the table
+  // renders the rows without crashing.
+  const SHOPS = shopsRaw
+    .filter((s) => !session?.brand || s.brand?.name === session.brand)
+    .map((s) => ({
+      id: s.id,
+      shop: s.name,
+      brand: s.brand?.name || session?.brand || '—',
+      location: s.location || '—',
+      budget: 0,
+      disbursed: 0,
+      pct: 0,
+      manager: '—',
+    }));
 
   const filteredQueue = QUEUE_DATA.filter(q => {
     const matchSearch = !search || [q.id, q.mgr, q.shop, q.cat, q.supplier].some(v => v.toLowerCase().includes(search.toLowerCase()));

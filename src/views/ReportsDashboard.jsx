@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
 import EndpointPendingBanner from '../components/shared/EndpointPendingBanner';
+import { listBrands } from '../lib/cvsApi';
 
-const BRANDS_LIST = ['All Brands', 'Chicken Inn', 'Pizza Inn', 'Creamy Inn', "Nando's", 'Steers', "Roco Mamma's", 'Ocean Basket', 'Hefelies', "Pastino's"];
+// Brand filter is populated from the live API on mount.
 const SHOPS_LIST = ['All Shops'];
 const LOCATIONS = ['All Locations'];
 const TIMEFRAMES = ['This Month', 'Last Month', 'This Quarter', 'Last Quarter', 'This Year', 'Custom'];
@@ -33,6 +34,17 @@ export default function ReportsDashboard() {
   const [timeframe, setTimeframe] = useState('This Month');
   const [customFrom, setCustomFrom] = useState('2025-03-01');
   const [customTo, setCustomTo] = useState('2025-03-31');
+  const [brandsRaw, setBrandsRaw] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    listBrands()
+      .then((list) => !cancelled && setBrandsRaw(Array.isArray(list) ? list : []))
+      .catch(() => !cancelled && setBrandsRaw([]));
+    return () => { cancelled = true; };
+  }, []);
+
+  const BRANDS_LIST = ['All Brands', ...brandsRaw.map((b) => b.name).filter(Boolean)];
 
   const visibleReports = REPORTS.filter(r => r.scope.includes(role));
   const roleInfo = ROLE_TITLES[role] || ROLE_TITLES.executive;

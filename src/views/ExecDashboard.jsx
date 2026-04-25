@@ -7,19 +7,13 @@ import CvsModal from '../components/modals/CvsModal';
 import DataTable from '../components/shared/DataTable';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
 import EndpointPendingBanner from '../components/shared/EndpointPendingBanner';
+import { listBrands, listShops } from '../lib/cvsApi';
 
-const BRANDS_LIST = ['All Brands', 'Chicken Inn', 'Pizza Inn', 'Creamy Inn', "Nando's", 'Steers', "Roco Mamma's", 'Ocean Basket', 'Hefelies', "Pastino's"];
-const SHOPS_LIST = ['All Shops'];
+// Filter dropdown defaults; the brand list now comes from listBrands().
 const LOCATIONS = ['All Locations'];
 const TIMEFRAMES = ['Today', 'This Week', 'This Month', 'This Quarter', 'Custom'];
 
-const BRANDS_DATA = [];
-
 const EXPENSES = [];
-
-const INNBUCKS_DATA = [];
-
-const SUPPLIER_TRENDS = [];
 
 const pctOf = (a, b) => Math.round((a / b) * 100);
 const pctColor = (p) => p >= 90 ? 'var(--er)' : p >= 70 ? 'var(--wa-t)' : 'var(--ok-t)';
@@ -40,6 +34,48 @@ export default function ExecDashboard() {
   const [detailItem, setDetailItem] = useState(null);
   const [detailType, setDetailType] = useState('');
   const [catFilter, setCatFilter] = useState(null);
+
+  const [brandsRaw, setBrandsRaw] = useState([]);
+  const [shopsRaw, setShopsRaw] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      listBrands().catch(() => []),
+      listShops().catch(() => []),
+    ]).then(([b, s]) => {
+      if (cancelled) return;
+      setBrandsRaw(Array.isArray(b) ? b : []);
+      setShopsRaw(Array.isArray(s) ? s : []);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Filter dropdowns now backed by live data.
+  const BRANDS_LIST = ['All Brands', ...brandsRaw.map((b) => b.name).filter(Boolean)];
+  const SHOPS_LIST = ['All Shops', ...shopsRaw.map((s) => s.name).filter(Boolean)];
+
+  // Brand summary table: real records, metrics defaulted until /reports/executive ships.
+  const BRANDS_DATA = brandsRaw.map((b) => ({
+    id: b.id,
+    brand: b.name,
+    code: b.code,
+    budget: 0,
+    disbursed: 0,
+    alerts: 0,
+  }));
+
+  const INNBUCKS_DATA = brandsRaw.map((b) => ({
+    id: b.id,
+    brand: b.name,
+    sales: 0,
+    txns: 0,
+    avg: 0,
+    trend: null,
+    notLive: true,
+  }));
+
+  const SUPPLIER_TRENDS = [];
   const REPORT_METRICS = [
     { id: 'petty-cash', label: 'Petty Cash', icon: '💳' },
     { id: 'innbucks',   label: 'InnBucks Sales', icon: '📈' },
