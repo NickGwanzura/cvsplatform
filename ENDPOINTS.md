@@ -13,10 +13,61 @@ Snapshot of every dashboard / feature in this app and the backend route it depen
 
 ## Headline numbers
 
-- **68** distinct `(verb, path)` tuples wired and live (up from 57)
+- **76** distinct `(verb, path)` tuples wired and live (up from 57)
 - **1** wired but broken: `GET /permissions` (Laravel TypeError)
 - **2** routes wired in `cvsApi.js` that depend on a broken upstream (`PUT /roles/:id/permissions` works, but its picker UI needs `/permissions`)
 - **3 modules newly shipped**: `procurement/requests` (5 routes), `budgets` (5 routes), `currency` (1 route)
+- **0 helper-only routes** — every wired API helper has a UI button (Admin → Roles tab gets `+ New Role` / `Edit` / `Delete`; Users tab gets `Roles` modal with add/edit-scope/remove; SideNav gets `Sign out everywhere`)
+
+---
+
+## 🚨 Backend attention required
+
+Live re-probe against `https://cvsplatform-production.up.railway.app/api/v1` as ADMIN — every issue below is reproducible right now. Severity is the user-impact when the endpoint stays in its current state.
+
+### 🔴 P0 — Breaking the live UI
+
+| # | Endpoint | Symptom | Fix |
+|---|---|---|---|
+| 1 | `GET /api/v1/permissions` | **500** — `App\Services\AccessContextService::hasPermission(): Argument #1 ($user) must be of type Modules\Authentication\Models\SystemUser, null given` | The controller calls `hasPermission()` before the auth guard resolves the user. Bind `auth:sanctum` (or whichever guard the rest of the API uses) so `$request->user()` is a `SystemUser`, not `null`. **This blocks the entire RolePermissionsModal** — admins can't edit any role's permission set. |
+
+### 🟠 P1 — Whole dashboard sections empty
+
+| # | Endpoint | Status | Affected UI | Notes |
+|---|---|---|---|---|
+| 2 | `GET /api/v1/reports` | **404** | ReportsDashboard (entire content) | `reports.{shop,brand,executive}.view` and `reports.export` permissions are seeded across 4 roles but no route serves them. |
+| 3 | `GET /api/v1/reports/executive` | **404** | ExecDashboard (Group Overview, Brand Breakdown KPIs) | Permission seeded on EXECUTIVE role. |
+| 4 | `GET /api/v1/reports/brand` | **404** | AccDashboard Tab 0 (Overview), Tab 2 (Budget Mgmt — disbursed totals + 80% threshold) | Permission seeded on BRAND_ACCOUNTANT. |
+| 5 | `GET /api/v1/reports/shop` | **404** | AccDashboard Tab 1 (over/within-limit flag on Review Queue) | Permission seeded. |
+| 6 | `GET /api/v1/reports/export` | **404** | All "export PDF" buttons | Permission `reports.export` seeded. |
+| 7 | `GET /api/v1/audit-logs` | **404** | AdminDashboard Tab 3 (System Audit) | `audit_logs.view` seeded on ADMIN. |
+
+### 🟡 P2 — Module unstarted, dashboard pieces stubbed out
+
+| # | Endpoint | Status | Affected UI |
+|---|---|---|---|
+| 8 | `POST /api/v1/payments` | **404** | BmDashboard Tab 0 — Pay InnBucks / Batch Pay buttons. No permission code seeded — module appears unstarted. |
+| 9 | `GET /api/v1/innbucks` | **404** | BmDashboard Tab 1 — Live Transactions table. No permission seeded. |
+| 10 | `GET /api/v1/daily-sales` | **404** | BmDashboard Tab 1 — 7-Day Sales Trend chart. No permission seeded. |
+| 11 | `GET /api/v1/reconciliation` | **404** | BmDashboard Tab 1 — Reconciliation table. No permission seeded. |
+| 12 | `GET /api/v1/notifications` | **404** | AppHeader bell icon — currently shows static "No notifications". |
+
+### 🔵 P3 — Scope clarification, not a code bug
+
+| # | Question | Why it matters |
+|---|---|---|
+| 13 | Are the `cash_entries.{view,create,submit,approve}` permission seeds dead code? | The permissions exist on three roles but no HTTP routes were registered — the workflow shipped at `/procurement/requests` instead. Either remove the dead seeds or register the missing routes. |
+| 14 | Is `GET /api/v1/budgets` intentionally brand-scoped only? | An ADMIN without a brand assignment receives `422 "No brand is assigned to this user."` — meaning no admin can view budgets across all brands. If admin should be able to query unscoped, expose a `?brand_id=:id` filter or relax the gate for `users.scope_type=global`. |
+| 15 | Is there a planned `/files` or `/uploads` endpoint outside `/procurement/suppliers/:id/documents`? | The supplier-document upload works, but the New Request form attaches a file with no place to send it. |
+
+### Summary for triage
+
+| Severity | Count | One-line description |
+|---|---|---|
+| 🔴 P0 | 1 | `/permissions` 500 — blocks RolePermissionsModal entirely |
+| 🟠 P1 | 6 | `/reports/*` (5) + `/audit-logs` — empty KPIs across BM/Acc/Exec/Reports/Admin-Audit |
+| 🟡 P2 | 5 | `/payments`, `/innbucks`, `/daily-sales`, `/reconciliation`, `/notifications` — modules unstarted |
+| 🔵 P3 | 3 | `cash_entries` dead seeds, `/budgets` admin scope, `/files` |
 
 ---
 
@@ -30,7 +81,8 @@ Snapshot of every dashboard / feature in this app and the backend route it depen
 | ✅ POST | `/auth/forgot-password` | `forgotPassword` | LoginPage |
 | ✅ POST | `/auth/reset-password` | `completePasswordReset` | `/reset-password` page |
 | ✅ POST | `/auth/accept-invite` | `acceptInvite` | `/accept-invite` page |
-| ✅ POST | `/auth/logout` | `logoutAll` | AppContext.logout |
+| ✅ POST | `/auth/logout` | `logout` | AppContext.logout (per-device sign-out button in SideNav) |
+| ✅ POST | `/auth/logout-all` | `logoutAllSessions` | AppContext.logoutEverywhere (sign-out-everywhere button in SideNav) |
 
 ---
 
@@ -45,7 +97,9 @@ Snapshot of every dashboard / feature in this app and the backend route it depen
 | ✅ POST | `/users` | `createUser` | CreateUserModal |
 | ✅ PUT | `/users/:id` | `updateUser` | EditUserModal |
 | ✅ PATCH | `/users/:id/status` | `updateUserStatus` | RevokeUserModal |
-| ✅ POST | `/users/:id/assignments` | `assignUserRole` | AssignUserRoleModal |
+| ✅ POST | `/users/:id/assignments` | `assignUserRole` | UserRolesModal → "+ Add assignment" |
+| ✅ PUT | `/users/:id/assignments/:aid` | `updateUserRoleAssignment` | UserRolesModal → "Edit scope" inline |
+| ✅ DELETE | `/users/:id/assignments/:aid` | `removeUserRoleAssignment` | UserRolesModal → "Remove" per assignment |
 | ✅ GET | `/invitations` | `listInvitations` | wired |
 | ✅ GET | `/invitations/:id` | `showInvitation` | InvitationDetailModal |
 | ✅ POST | `/invitations` | `inviteUser` | InviteUserModal |
@@ -56,8 +110,12 @@ Snapshot of every dashboard / feature in this app and the backend route it depen
 
 | Verb | Path | Helper | Status |
 |---|---|---|---|
-| ✅ GET | `/roles` | `listRoles` | wired |
-| ⚠️ GET | `/permissions` | `listPermissions` | **500 — Laravel TypeError in `RoleManagementController::index` line 25**. Frontend shows soft error. |
+| ✅ GET | `/roles` | `listRoles` | Tab 1 table |
+| ✅ GET | `/roles/:id` | `showRole` | helper exposed (RoleEditModal prefills from row, doesn't refetch) |
+| ✅ POST | `/roles` | `createRole` | RoleEditModal in create mode (toolbar "+ New Role") |
+| ✅ PUT | `/roles/:id` | `updateRole` | RoleEditModal in edit mode (row "Edit" button — name/code/scope/description) |
+| ✅ DELETE | `/roles/:id` | `deleteRole` | row "Delete" button (confirms + warns on active assignments) |
+| ⚠️ GET | `/permissions` | `listPermissions` | **500 — see [P0 #1](#-p0--breaking-the-live-ui)**. `AccessContextService::hasPermission()` receives `null` instead of a `SystemUser`. Frontend shows soft error. |
 | ✅ PUT | `/roles/:id/permissions` | `syncRolePermissions` | RolePermissionsModal — UX gated on the broken `/permissions` 5xx until backend fixes the auth-middleware binding. |
 
 ### Tab 2 — Brands & Shops
@@ -291,10 +349,9 @@ Both tabs show `EndpointPendingBanner` with notes describing what's seeded vs. u
 
 ## Action items for the backend team
 
-Sorted by user impact:
+See the full triage at [🚨 Backend attention required](#-backend-attention-required) at the top — that section is the canonical list, sorted by severity. The bottom-of-doc summary below mirrors it for quick reference.
 
-1. **Fix `GET /permissions`.** Add the `auth:sanctum` middleware to `RoleManagementController::index` (or whichever guard the rest of the API uses). Currently throws TypeError because `$request->user()` is null.
-2. **Register the `reports` routes.** `reports.{shop, brand, executive}.view` and `reports.export` permissions exist but no route serves them — the BM/Acc/Exec/Reports dashboards still show empty KPIs and unwired banners because of this.
-3. **Register `GET /audit-logs`.** Permission seeded.
-4. **Confirm `cash_entries` is intentional dead seed data** — the `cash_entries.{view,create,submit,approve}` permissions exist on three roles but no HTTP routes; the equivalent workflow appears to live at `/procurement/requests`.
-5. **Scope out the `disbursements` / `payments` / `innbucks` modules** — these have no permissions in the seed data and the BM Pay InnBucks / sales / reconciliation views are entirely placeholder until backend confirms scope.
+1. **P0** — Fix `GET /permissions` (1 endpoint, 500).
+2. **P1** — Register `reports/*` (5 endpoints) and `/audit-logs` (1 endpoint).
+3. **P2** — Scope and ship `/payments`, `/innbucks`, `/daily-sales`, `/reconciliation`, `/notifications`.
+4. **P3** — Decide whether `cash_entries.*` permission seeds are dead code, whether `/budgets` should be admin-queryable, and whether a generic `/files` upload endpoint is planned.

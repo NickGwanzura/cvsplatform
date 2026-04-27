@@ -122,8 +122,14 @@ export const changePassword = (data) =>
 export const forgotPassword = (data) =>
   api.post('/auth/forgot-password', data).then((r) => r.data);
 
-export const logoutAll = () =>
+// Revokes the *current* session token. The companion `/auth/logout-all`
+// route below revokes every token for the user.
+export const logout = () =>
   api.post('/auth/logout').then((r) => r.data);
+
+// Revokes every active token for the user — sign out across all devices.
+export const logoutAllSessions = () =>
+  api.post('/auth/logout-all').then((r) => r.data);
 
 export const acceptInvite = (data) =>
   api.post('/auth/accept-invite', data).then((r) => r.data);
@@ -147,9 +153,19 @@ export const updateUserStatus = (id, status) =>
 // Payload: { role_id, brand_id?, shop_id? }
 export const assignUserRole = (userId, data) =>
   api.post(`/users/${userId}/assignments`, data).then((r) => r.data);
+// Update an existing assignment (e.g. change brand/shop scope).
+export const updateUserRoleAssignment = (userId, assignmentId, data) =>
+  api.put(`/users/${userId}/assignments/${assignmentId}`, data).then((r) => r.data);
+// Revoke an assignment from a user.
+export const removeUserRoleAssignment = (userId, assignmentId) =>
+  api.delete(`/users/${userId}/assignments/${assignmentId}`).then((r) => r.data);
 
 // Roles
 export const listRoles = () => api.get('/roles').then(unwrap);
+export const showRole = (id) => api.get(`/roles/${id}`).then((r) => r.data);
+export const createRole = (data) => api.post('/roles', data).then((r) => r.data);
+export const updateRole = (id, data) => api.put(`/roles/${id}`, data).then((r) => r.data);
+export const deleteRole = (id) => api.delete(`/roles/${id}`).then((r) => r.data);
 // Replace the permission set on a role. Payload: { permission_ids: [uuid, ...] }
 export const syncRolePermissions = (roleId, permissionIds) =>
   api.put(`/roles/${roleId}/permissions`, { permission_ids: permissionIds }).then((r) => r.data);

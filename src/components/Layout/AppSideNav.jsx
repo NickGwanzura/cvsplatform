@@ -4,11 +4,18 @@ import { ROLES } from '../../data/mockData';
 import { ProfileModal } from '../modals/AllModals';
 
 export default function AppSideNav() {
-  const { session, activeNavIdx, navigate, navOpen, setNavOpen, logout } = useApp();
+  const { session, activeNavIdx, navigate, navOpen, setNavOpen, logout, logoutEverywhere, addToast } = useApp();
   const [showProfile, setShowProfile] = useState(false);
   if (!session) return null;
   const r = ROLES[session.roleKey];
   const initials = session.name.split(' ').map(n => n[0]).join('').slice(0, 2);
+
+  const handleSignOutAll = async (e) => {
+    e.stopPropagation();
+    if (!window.confirm('Sign out of every device? You will need to log in again everywhere.')) return;
+    await logoutEverywhere();
+    addToast?.('ok', 'Signed out everywhere', 'All sessions revoked');
+  };
 
   return (
     <>
@@ -54,7 +61,13 @@ export default function AppSideNav() {
               <div className="cvs-nav-profile-role">{r.label}</div>
             </div>
           </div>
-          <button className="cvs-nav-logout" onClick={(e) => { e.stopPropagation(); logout(); }} title="Sign out">
+          <button className="cvs-nav-logout" onClick={handleSignOutAll} title="Sign out everywhere (all devices)" style={{ marginRight: 4 }}>
+            <svg width="16" height="16" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
+              <path d="M12 4H4v24h8v-2H6V6h6zm8 18l-1.5-1.5L22 17H10v-2h12l-3.5-3.5L20 10l6 6z" />
+              <text x="22" y="11" fontSize="9" fontWeight="700">∗</text>
+            </svg>
+          </button>
+          <button className="cvs-nav-logout" onClick={(e) => { e.stopPropagation(); logout(); }} title="Sign out (this device)">
             <svg width="16" height="16" viewBox="0 0 32 32" fill="currentColor">
               <path d="M12 4H4v24h8v-2H6V6h6zm8 18l-1.5-1.5L22 17H10v-2h12l-3.5-3.5L20 10l6 6z" />
             </svg>

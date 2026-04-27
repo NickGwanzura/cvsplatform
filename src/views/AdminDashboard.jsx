@@ -16,8 +16,9 @@ import {
   UserDetailModal,
   InvitationDetailModal,
   PermissionsModal,
-  AssignUserRoleModal,
+  UserRolesModal,
   RolePermissionsModal,
+  RoleEditModal,
 } from '../components/modals/AllModals';
 import {
   listUsers,
@@ -27,6 +28,7 @@ import {
   listShops,
   resendInvitation,
   revokeInvite,
+  deleteRole,
 } from '../lib/cvsApi';
 
 const SYSTEM_LOGS = [];
@@ -69,10 +71,26 @@ export default function AdminDashboard() {
   const [viewUserId, setViewUserId] = useState(null);
   const [viewInvitationId, setViewInvitationId] = useState(null);
   const [showPermissions, setShowPermissions] = useState(false);
-  const [assignUser, setAssignUser] = useState(null);
+  const [manageRolesUser, setManageRolesUser] = useState(null);
   const [editRolePerms, setEditRolePerms] = useState(null);
+  const [editRole, setEditRole] = useState(null);
   const [logSearch, setLogSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
+
+  const handleDeleteRole = async (role) => {
+    const userCount = users.reduce((acc, u) => acc + (u.assignments || []).filter((a) => a.is_active && a.role_id === role.id).length, 0);
+    const warn = userCount > 0
+      ? `${userCount} active assignment${userCount === 1 ? '' : 's'} will be revoked. `
+      : '';
+    if (!window.confirm(`${warn}Delete the "${role.name}" role? This cannot be undone.`)) return;
+    try {
+      await deleteRole(role.id);
+      addToast('ok', 'Role deleted', role.name);
+      refresh();
+    } catch (err) {
+      addToast('er', 'Delete failed', err?.response?.data?.message || err.message || 'Try again');
+    }
+  };
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -263,7 +281,7 @@ export default function AdminDashboard() {
                           <button className="rb ed" onClick={() => setEditUser(r)} title="Edit user">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                           </button>
-                          <button className="rb ap" onClick={() => setAssignUser(r)} title="Assign role">+ Role</button>
+                          <button className="rb ap" onClick={() => setManageRolesUser(r)} title="Manage roles">Roles</button>
                           <button className="rb rj" onClick={() => setRevokeUser(r)}>Revoke</button>
                         </>
                       ) : (
@@ -298,7 +316,10 @@ export default function AdminDashboard() {
           </div>
           <div className="tbbar">
             <div className="tbt">Role Definitions &amp; Permissions</div>
-            <button className="ab sec" style={{ height: 32, fontSize: 12 }} onClick={() => setShowPermissions(true)}>View all system permissions</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="ab sec" style={{ height: 32, fontSize: 12 }} onClick={() => setShowPermissions(true)}>View all system permissions</button>
+              <button className="ab pri" style={{ height: 32, fontSize: 12 }} onClick={() => setEditRole({})}>+ New Role</button>
+            </div>
           </div>
           <table className="dt">
             <thead><tr><th>Role</th><th>Users</th><th>Scope</th><th>Permissions</th><th style={{ width: 120 }}>Action</th></tr></thead>
@@ -323,7 +344,11 @@ export default function AdminDashboard() {
                     </div>
                   </td>
                   <td>
-                    <button className="rb ed" onClick={() => setEditRolePerms(r)}>Edit perms</button>
+                    <div className="ra">
+                      <button className="rb ed" onClick={() => setEditRolePerms(r)}>Edit perms</button>
+                      <button className="rb ed" onClick={() => setEditRole(r)} title="Rename / change scope">Edit</button>
+                      <button className="rb rj" onClick={() => handleDeleteRole(r)}>Delete</button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -447,16 +472,20 @@ export default function AdminDashboard() {
       <UserDetailModal userId={viewUserId} onClose={() => setViewUserId(null)} />
       <InvitationDetailModal invitationId={viewInvitationId} onClose={() => setViewInvitationId(null)} />
       <PermissionsModal open={showPermissions} onClose={() => setShowPermissions(false)} />
-      <AssignUserRoleModal
-        user={assignUser}
+      <UserRolesModal
+        user={manageRolesUser}
         roles={roles}
         brands={brands}
         shops={shops}
-        onClose={(changed) => { setAssignUser(null); if (changed) refresh(); }}
+        onClose={(changed) => { setManageRolesUser(null); if (changed) refresh(); }}
       />
       <RolePermissionsModal
         role={editRolePerms}
         onClose={(changed) => { setEditRolePerms(null); if (changed) refresh(); }}
+      />
+      <RoleEditModal
+        role={editRole}
+        onClose={(changed) => { setEditRole(null); if (changed) refresh(); }}
       />
     </>
   );

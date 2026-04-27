@@ -50,6 +50,11 @@ import {
   listPermissions,
   assignUserRole,
   syncRolePermissions,
+  createRole,
+  updateRole,
+  deleteRole,
+  updateUserRoleAssignment,
+  removeUserRoleAssignment,
 } from '../../lib/cvsApi';
 
 function extractApiError(err, fallback = 'Request failed') {
@@ -1237,6 +1242,286 @@ export function AssignUserRoleModal({ user, roles = [], brands = [], shops = [],
       <div style={{ marginTop: 12, padding: 10, background: 'var(--info-bg)', borderLeft: '3px solid var(--int)', fontSize: 11, color: 'var(--ts)' }}>
         This adds a new role assignment to the user without touching existing ones. To replace a role, remove the old one separately.
       </div>
+    </CvsModal>
+  );
+}
+
+/* ── User Roles Modal — list / add / edit-scope / remove assignments ───── */
+export function UserRolesModal({ user, roles = [], brands = [], shops = [], onClose }) {
+  const { addToast } = useApp();
+  const [busyId, setBusyId] = useState('');
+  const [editing, setEditing] = useState(null);
+  const [editBrandId, setEditBrandId] = useState('');
+  const [editShopId, setEditShopId] = useState('');
+
+  const [newRoleId, setNewRoleId] = useState('');
+  const [newBrandId, setNewBrandId] = useState('');
+  const [newShopId, setNewShopId] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setNewRoleId(''); setNewBrandId(''); setNewShopId('');
+      setEditing(null);
+    }
+  }, [user]);
+  if (!user) return null;
+
+  const assignments = user.raw?.assignments || user.assignments || [];
+  const roleById = Object.fromEntries(roles.map((r) => [r.id, r]));
+  const brandById = Object.fromEntries(brands.map((b) => [b.id, b]));
+  const shopById = Object.fromEntries(shops.map((s) => [s.id, s]));
+  const userId = user.id;
+
+  const newRole = roles.find((r) => r.id === newRoleId);
+  const newIsGlobal = newRole?.scope_type === 'global';
+  const newIsShop = newRole?.code === 'SHOP_MANAGER';
+  const shopsInNewBrand = shops.filter((s) => s.brand_id === newBrandId);
+  const newValid = !!newRoleId && (newIsGlobal || !!newBrandId) && (!newIsShop || !!newShopId);
+
+  const handleRemove = async (assignment) => {
+    if (!window.confirm(`Remove ${roleById[assignment.role_id]?.name || 'this role'} assignment?`)) return;
+    setBusyId(assignment.id);
+    try {
+      await removeUserRoleAssignment(userId, assignment.id);
+      addToast('ok', 'Assignment removed', 'The role has been revoked');
+      onClose?.(true);
+    } catch (e) {
+      addToast('er', 'Remove failed', extractApiError(e));
+    } finally {
+      setBusyId('');
+    }
+  };
+
+  const startEdit = (a) => {
+    setEditing(a.id);
+    setEditBrandId(a.brand_id || '');
+    setEditShopId(a.shop_id || '');
+  };
+
+  const saveEdit = async (a) => {
+    setBusyId(a.id);
+    try {
+      const payload = { role_id: a.role_id };
+      if (editBrandId) payload.brand_id = editBrandId;
+      if (editShopId) payload.shop_id = editShopId;
+      await updateUserRoleAssignment(userId, a.id, payload);
+      addToast('ok', 'Scope updated', 'Assignment scope saved');
+      onClose?.(true);
+    } catch (e) {
+      addToast('er', 'Update failed', extractApiError(e));
+    } finally {
+      setBusyId('');
+      setEditing(null);
+    }
+  };
+
+  const handleAdd = async () => {
+    if (!newValid || adding) return;
+    setAdding(true);
+    try {
+      const payload = { role_id: newRoleId };
+      if (!newIsGlobal && newBrandId) payload.brand_id = newBrandId;
+      if (newIsShop && newShopId) payload.shop_id = newShopId;
+      await assignUserRole(userId, payload);
+      addToast('ok', 'Role assigned', `${newRole?.name || 'Role'} added`);
+      onClose?.(true);
+    } catch (e) {
+      addToast('er', 'Assignment failed', extractApiError(e));
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  return (
+    <CvsModal
+      open={!!user}
+      onClose={() => onClose?.(false)}
+      title="Manage roles"
+      subtitle={user.name || user.email || 'User'}
+      size="md"
+      footer={<button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={() => onClose?.(false)}>Done</button>}
+    >
+      <div style={{ marginBottom: 14 }}>
+        <div className="cvs-detail-label" style={{ marginBottom: 6 }}>Current assignments ({assignments.length})</div>
+        {assignments.length === 0 ? (
+          <div style={{ fontSize: 12, color: 'var(--ts)', padding: 8, background: 'var(--l2)' }}>No assignments yet — add one below.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {assignments.map((a) => {
+              const role = roleById[a.role_id];
+              const brand = brandById[a.brand_id];
+              const shop = shopById[a.shop_id];
+              const isEditing = editing === a.id;
+              const isShop = role?.code === 'SHOP_MANAGER';
+              const isGlobal = role?.scope_type === 'global';
+              const editShopsInBrand = shops.filter((s) => s.brand_id === editBrandId);
+              return (
+                <div key={a.id} style={{ border: '1px solid var(--bs)', padding: 10, background: a.is_active === false ? 'var(--l2)' : 'var(--l1)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{role?.name || a.role_id}</div>
+                      <div style={{ fontSize: 11, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace" }}>
+                        {role?.code || ''}{role?.scope_type ? ` · ${role.scope_type}` : ''}
+                        {brand ? ` · ${brand.name}` : ''}{shop ? ` / ${shop.name}` : ''}
+                      </div>
+                    </div>
+                    {!isEditing && (
+                      <div className="ra">
+                        {!isGlobal && (
+                          <button className="rb ed" disabled={busyId === a.id} onClick={() => startEdit(a)}>Edit scope</button>
+                        )}
+                        <button className="rb rj" disabled={busyId === a.id} onClick={() => handleRemove(a)}>{busyId === a.id ? '…' : 'Remove'}</button>
+                      </div>
+                    )}
+                  </div>
+                  {isEditing && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8, marginTop: 10 }}>
+                      <select className="fsel" value={editBrandId} onChange={(e) => { setEditBrandId(e.target.value); setEditShopId(''); }}>
+                        <option value="">— Brand —</option>
+                        {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                      </select>
+                      {isShop && (
+                        <select className="fsel" value={editShopId} onChange={(e) => setEditShopId(e.target.value)}>
+                          <option value="">— Shop —</option>
+                          {editShopsInBrand.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                      )}
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="rb ap" disabled={busyId === a.id} onClick={() => saveEdit(a)}>{busyId === a.id ? '…' : 'Save'}</button>
+                        <button className="rb sec" onClick={() => setEditing(null)}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div style={{ borderTop: '1px solid var(--bs)', paddingTop: 14 }}>
+        <div className="cvs-detail-label" style={{ marginBottom: 6 }}>Add a new role</div>
+        <div className="fg">
+          <div className="fi full">
+            <label className="fl">Role</label>
+            <select className="fsel" value={newRoleId} onChange={(e) => { setNewRoleId(e.target.value); setNewBrandId(''); setNewShopId(''); }}>
+              <option value="">— Select role —</option>
+              {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+          </div>
+          {newRole && !newIsGlobal && (
+            <div className="fi full">
+              <label className="fl">Brand</label>
+              <select className="fsel" value={newBrandId} onChange={(e) => { setNewBrandId(e.target.value); setNewShopId(''); }}>
+                <option value="">— Select brand —</option>
+                {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+            </div>
+          )}
+          {newIsShop && newBrandId && (
+            <div className="fi full">
+              <label className="fl">Shop</label>
+              <select className="fsel" value={newShopId} onChange={(e) => setNewShopId(e.target.value)}>
+                <option value="">— Select shop —</option>
+                {shopsInNewBrand.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          )}
+        </div>
+        <button className="ab pri" style={{ height: 36, marginTop: 10 }} disabled={!newValid || adding} onClick={handleAdd}>{adding ? 'Adding…' : '+ Add assignment'}</button>
+      </div>
+    </CvsModal>
+  );
+}
+
+/* ── Role Edit Modal — create or rename a role ──────────────────────────── */
+const SCOPE_OPTIONS = [
+  { value: 'global', label: 'Global (no brand/shop)' },
+  { value: 'brand', label: 'Brand-scoped' },
+  { value: 'shop', label: 'Shop-scoped' },
+];
+
+export function RoleEditModal({ role, onClose }) {
+  const { addToast } = useApp();
+  const isCreate = !role?.id;
+  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+  const [scopeType, setScopeType] = useState('brand');
+  const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!role) return;
+    setName(role.name || '');
+    setCode(role.code || '');
+    setScopeType(role.scope_type || 'brand');
+    setDescription(role.description || '');
+  }, [role]);
+
+  if (!role) return null;
+  const valid = name.trim() && code.trim() && scopeType;
+
+  const save = async () => {
+    if (!valid || saving) return;
+    setSaving(true);
+    try {
+      const payload = {
+        name: name.trim(),
+        code: code.trim().toUpperCase(),
+        scope_type: scopeType,
+        description: description.trim() || null,
+      };
+      if (isCreate) {
+        await createRole(payload);
+        addToast('ok', 'Role created', payload.name);
+      } else {
+        await updateRole(role.id, payload);
+        addToast('ok', 'Role updated', payload.name);
+      }
+      onClose?.(true);
+    } catch (e) {
+      addToast('er', isCreate ? 'Create failed' : 'Update failed', extractApiError(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <CvsModal
+      open={!!role}
+      onClose={() => onClose?.(false)}
+      title={isCreate ? 'New role' : 'Edit role'}
+      subtitle={isCreate ? 'Create a role definition' : (role.name || 'Role')}
+      size="md"
+      footer={<>
+        <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={() => onClose?.(false)}>Cancel</button>
+        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} disabled={!valid || saving} onClick={save}>{saving ? 'Saving…' : (isCreate ? 'Create role' : 'Save changes')}</button>
+      </>}
+    >
+      <div className="fg">
+        <div className="fi"><label className="fl">Display name</label><input className="fin" value={name} onChange={(e) => setName(e.target.value)} placeholder="Brand Manager" /></div>
+        <div className="fi">
+          <label className="fl">Code</label>
+          <input className="fin" value={code} onChange={(e) => setCode(e.target.value)} placeholder="BRAND_MANAGER" style={{ fontFamily: "'IBM Plex Mono',monospace" }} />
+          <div className="fh">UPPERCASE_SNAKE — used in permission checks</div>
+        </div>
+        <div className="fi">
+          <label className="fl">Scope</label>
+          <select className="fsel" value={scopeType} onChange={(e) => setScopeType(e.target.value)}>
+            {SCOPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+        <div className="fi full">
+          <label className="fl">Description</label>
+          <input className="fin" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional — what this role can do" />
+        </div>
+      </div>
+      {!isCreate && (
+        <div style={{ marginTop: 12, padding: 10, background: 'var(--info-bg)', borderLeft: '3px solid var(--int)', fontSize: 11, color: 'var(--ts)' }}>
+          Permissions are managed separately via the "Edit perms" button on the role list.
+        </div>
+      )}
     </CvsModal>
   );
 }

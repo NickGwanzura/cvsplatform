@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { getMyProfile, logoutAll, listCurrencies } from '../lib/cvsApi';
+import { getMyProfile, logout as apiLogout, logoutAllSessions, listCurrencies } from '../lib/cvsApi';
 import { ROLES } from '../data/mockData';
 import { normalizeAuth } from '../lib/authMap';
 
@@ -44,7 +44,17 @@ export function AppProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
-    logoutAll().catch(() => {});
+    apiLogout().catch(() => {});
+    localStorage.removeItem('token');
+    setSession(null);
+    setActiveView('');
+    setActiveNavIdx(0);
+    setActiveTab(0);
+    setBatchSelected([]);
+  }, []);
+
+  const logoutEverywhere = useCallback(async () => {
+    await logoutAllSessions().catch(() => {});
     localStorage.removeItem('token');
     setSession(null);
     setActiveView('');
@@ -111,7 +121,7 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider value={{
-      session, login, logout, bootstrapping,
+      session, login, logout, logoutEverywhere, bootstrapping,
       activeView, activeNavIdx, activeTab, navigate, headerTitle,
       toasts, addToast, dismissToast,
       modals, openModal, closeModal,
