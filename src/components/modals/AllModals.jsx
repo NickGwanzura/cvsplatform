@@ -53,8 +53,13 @@ import {
   createRole,
   updateRole,
   deleteRole,
+  showRole,
   updateUserRoleAssignment,
   removeUserRoleAssignment,
+  showProcurementRequest,
+  createBudget,
+  updateBudget,
+  deleteBudget,
 } from '../../lib/cvsApi';
 
 function extractApiError(err, fallback = 'Request failed') {
@@ -65,6 +70,70 @@ function extractApiError(err, fallback = 'Request failed') {
       .join(' · ');
   }
   return data?.message || err?.message || fallback;
+}
+
+/* ── Procurement Request Detail Modal — fetches full record on open ─────── */
+export function ProcurementRequestDetailModal({ requestId, onClose }) {
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!requestId) { setData(null); setErr(''); return; }
+    let cancelled = false;
+    setLoading(true);
+    setErr('');
+    showProcurementRequest(requestId)
+      .then((res) => {
+        if (cancelled) return;
+        // Backend returns either { data: {...} } or the record directly.
+        setData(res?.data || res);
+      })
+      .catch((e) => !cancelled && setErr(extractApiError(e, 'Failed to load request')))
+      .finally(() => !cancelled && setLoading(false));
+    return () => { cancelled = true; };
+  }, [requestId]);
+
+  if (!requestId) return null;
+  const amt = Number(data?.amount || 0);
+
+  return (
+    <CvsModal open={!!requestId} onClose={onClose} size="md"
+      title={`Request — ${requestId.slice(0, 8)}…`}
+      subtitle={data?.status ? data.status.toUpperCase() : (loading ? 'Loading…' : '')}
+      footer={<button className="ab pri lg" onClick={onClose}>Close</button>}
+    >
+      {loading && <div style={{ color: 'var(--ts)', fontSize: 12 }}>Loading…</div>}
+      {err && (
+        <div className="ntf er">
+          <div>
+            <div className="ntf-t">Could not load request</div>
+            <div className="ntf-b">{err}</div>
+          </div>
+        </div>
+      )}
+      {data && !loading && [
+        { label: 'Request ID', value: <code style={{ color: 'var(--info)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>{data.id || requestId}</code> },
+        { label: 'Status', value: <StatusTag type={data.status || 'pending'} /> },
+        { label: 'Amount', value: <span style={{ fontWeight: 700, color: 'var(--int)', fontSize: 18, fontFamily: "'IBM Plex Sans Condensed',sans-serif" }}>${amt.toFixed(2)}</span> },
+        { label: 'Category', value: data.category?.name || '—' },
+        { label: 'Supplier', value: data.supplier?.name || '—' },
+        { label: 'Shop', value: data.shop?.name || '—' },
+        { label: 'Brand', value: data.brand?.name || data.shop?.brand?.name || '—' },
+        { label: 'Requested by', value: data.requested_by?.full_name || data.requested_by?.name || '—' },
+        { label: 'Created', value: data.created_at ? new Date(data.created_at).toLocaleString() : '—' },
+        { label: 'Updated', value: data.updated_at ? new Date(data.updated_at).toLocaleString() : '—' },
+        { label: 'Description', value: data.description || data.purpose || '—' },
+        ...(data.rejected_reason ? [{ label: 'Rejection reason', value: <span style={{ color: 'var(--er-t)' }}>{data.rejected_reason}</span> }] : []),
+        ...(data.approved_by ? [{ label: 'Approved by', value: data.approved_by?.full_name || data.approved_by?.name || '—' }] : []),
+      ].map((row, i, arr) => (
+        <div key={i} className="cvs-detail-row" style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--bs)' : 'none' }}>
+          <span className="cvs-detail-label">{row.label}</span>
+          <span style={{ fontSize: 13 }}>{row.value}</span>
+        </div>
+      ))}
+    </CvsModal>
+  );
 }
 
 /* ── Request Detail Modal ───────────────────────────────────────────────── */
@@ -1450,13 +1519,33 @@ export function RoleEditModal({ role, onClose }) {
   const [scopeType, setScopeType] = useState('brand');
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
+  const [refetching, setRefetching] = useState(false);
 
   useEffect(() => {
     if (!role) return;
+    // Prime form from the row immediately for instant render.
     setName(role.name || '');
     setCode(role.code || '');
     setScopeType(role.scope_type || 'brand');
     setDescription(role.description || '');
+    // For edits, refetch from /roles/:id to pick up any fields not in the
+    // listRoles payload (e.g. description). Skipped for create.
+    if (role.id) {
+      let cancelled = false;
+      setRefetching(true);
+      showRole(role.id)
+        .then((res) => {
+          if (cancelled) return;
+          const fresh = res?.data || res;
+          if (fresh?.name) setName(fresh.name);
+          if (fresh?.code) setCode(fresh.code);
+          if (fresh?.scope_type) setScopeType(fresh.scope_type);
+          if (fresh?.description != null) setDescription(fresh.description || '');
+        })
+        .catch(() => { /* fall back to row data */ })
+        .finally(() => !cancelled && setRefetching(false));
+      return () => { cancelled = true; };
+    }
   }, [role]);
 
   if (!role) return null;
@@ -1492,7 +1581,7 @@ export function RoleEditModal({ role, onClose }) {
       open={!!role}
       onClose={() => onClose?.(false)}
       title={isCreate ? 'New role' : 'Edit role'}
-      subtitle={isCreate ? 'Create a role definition' : (role.name || 'Role')}
+      subtitle={isCreate ? 'Create a role definition' : (refetching ? 'Refreshing…' : (role.name || 'Role'))}
       size="md"
       footer={<>
         <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={() => onClose?.(false)}>Cancel</button>
@@ -2005,37 +2094,106 @@ export function SubmitRequestModal({ open, onClose, formData }) {
 }
 
 /* ── Budget Modal (Accountant) ──────────────────────────────────────────── */
-export function BudgetModal({ open, onClose }) {
+// One row per shop. Pre-existing /budgets entries appear with their amount;
+// shops without a budget show 0 and an empty budget_id so the save flow knows
+// to POST instead of PUT. Clearing the input back to 0 (when a budget exists)
+// triggers a DELETE.
+export function BudgetModal({ open, onClose, shops = [], budgets = [] }) {
   const { addToast } = useApp();
-  const [budgets, setBudgets] = useState([]);
-  const update = (id, field, val) => setBudgets(b => b.map(s => s.id === id ? { ...s, [field]: val } : s));
+  const [rows, setRows] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const budgetByShop = Object.fromEntries(budgets.map((b) => [b.shop_id, b]));
+    setRows(
+      shops.map((s) => {
+        const b = budgetByShop[s.id];
+        const amt = Number(b?.amount ?? b?.monthly_amount ?? 0);
+        return {
+          shop_id: s.id,
+          shop_name: s.name,
+          location: s.location || '—',
+          budget_id: b?.id || null,
+          original_amount: amt,
+          amount: amt,
+        };
+      })
+    );
+  }, [open, shops, budgets]);
+
+  const update = (shop_id, field, val) =>
+    setRows((rs) => rs.map((r) => (r.shop_id === shop_id ? { ...r, [field]: val } : r)));
+
+  const dirtyRows = rows.filter((r) => Number(r.amount) !== Number(r.original_amount));
+
+  const save = async () => {
+    if (saving || dirtyRows.length === 0) {
+      onClose?.(false);
+      return;
+    }
+    setSaving(true);
+    let ok = 0; let fail = 0;
+    for (const r of dirtyRows) {
+      const newAmount = Number(r.amount);
+      try {
+        if (r.budget_id && newAmount === 0) {
+          await deleteBudget(r.budget_id);
+        } else if (r.budget_id) {
+          await updateBudget(r.budget_id, { amount: newAmount });
+        } else if (newAmount > 0) {
+          await createBudget({ shop_id: r.shop_id, amount: newAmount });
+        } else {
+          continue; // 0 → 0 with no existing budget; nothing to do
+        }
+        ok += 1;
+      } catch (e) {
+        fail += 1;
+        addToast('er', `Save failed — ${r.shop_name}`, extractApiError(e));
+      }
+    }
+    setSaving(false);
+    if (ok > 0) addToast('ok', 'Budgets updated', `${ok} shop${ok === 1 ? '' : 's'} saved${fail ? `, ${fail} failed` : ''}`);
+    onClose?.(ok > 0);
+  };
+
   return (
-    <CvsModal open={!!open} onClose={onClose} size="lg" title="Set Shop Budgets" subtitle="Set monthly petty cash limits per shop"
+    <CvsModal open={!!open} onClose={() => onClose?.(false)} size="lg" title="Set Shop Budgets" subtitle="Set monthly petty cash limits per shop"
       footer={<>
-        <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Cancel</button>
-        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} onClick={() => { onClose(); addToast('ok', 'Budgets updated', `Monthly budgets saved for ${budgets.length} shop${budgets.length === 1 ? '' : 's'}`); }}>
-          Save Budgets
+        <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={() => onClose?.(false)}>Cancel</button>
+        <button className="ab pri" style={{ height: 42, padding: '0 20px' }} disabled={saving || dirtyRows.length === 0} onClick={save}>
+          {saving ? 'Saving…' : dirtyRows.length === 0 ? 'Save Budgets' : `Save ${dirtyRows.length} change${dirtyRows.length === 1 ? '' : 's'}`}
         </button>
       </>}
     >
       <table className="dt">
-        <thead><tr><th>Shop</th><th>Location</th><th>Current Budget</th><th>New Monthly Budget (USD)</th><th>Category Caps</th></tr></thead>
+        <thead><tr><th>Shop</th><th>Location</th><th>Current Budget</th><th>New Monthly Budget (USD)</th><th>Status</th></tr></thead>
         <tbody>
-          {budgets.length === 0 ? (
-            <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No data.</td></tr>
-          ) : budgets.map(s => (
-            <tr key={s.id}>
-              <td><strong>{s.id}</strong></td>
-              <td>{s.loc}</td>
-              <td>${s.budget.toLocaleString()}</td>
-              <td><input className="fin" type="number" value={s.budget} onChange={e => update(s.id, 'budget', +e.target.value)} style={{ width: 120 }} /></td>
-              <td><input className="fin" type="text" value={s.caps} onChange={e => update(s.id, 'caps', e.target.value)} placeholder="e.g. Cleaning $300" style={{ width: 180 }} /></td>
-            </tr>
-          ))}
+          {rows.length === 0 ? (
+            <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No shops in scope.</td></tr>
+          ) : rows.map(r => {
+            const isNew = !r.budget_id;
+            const dirty = Number(r.amount) !== Number(r.original_amount);
+            const willDelete = r.budget_id && Number(r.amount) === 0;
+            return (
+              <tr key={r.shop_id}>
+                <td><strong>{r.shop_name}</strong></td>
+                <td>{r.location}</td>
+                <td>{r.budget_id ? `$${r.original_amount.toLocaleString()}` : <span style={{ color: 'var(--ts)' }}>—</span>}</td>
+                <td><input className="fin" type="number" min="0" value={r.amount} onChange={e => update(r.shop_id, 'amount', e.target.value)} style={{ width: 120 }} /></td>
+                <td style={{ fontSize: 11, fontFamily: "'IBM Plex Mono',monospace" }}>
+                  {!dirty ? <span style={{ color: 'var(--ts)' }}>—</span>
+                    : willDelete ? <span style={{ color: 'var(--er)' }}>WILL DELETE</span>
+                    : isNew ? <span style={{ color: 'var(--ok-t)' }}>NEW</span>
+                    : <span style={{ color: 'var(--wa-t)' }}>UPDATED</span>}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       <div style={{ marginTop: 13, padding: 10, background: 'var(--info-bg)', borderLeft: '3px solid var(--int)' }}>
-        <div style={{ fontSize: 11, color: 'var(--info)' }}>Threshold alerts trigger at 80%. Shops at 80–99% show MONITOR, at 90%+ trigger exception workflow. All budget changes are logged.</div>
+        <div style={{ fontSize: 11, color: 'var(--info)' }}>Set a value &gt; 0 to create or update a budget. Set to 0 to delete an existing budget. Saves run sequentially — failures are reported per shop.</div>
       </div>
     </CvsModal>
   );

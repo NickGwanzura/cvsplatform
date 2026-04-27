@@ -4,7 +4,7 @@ import StatusTag from '../components/shared/StatusTag';
 import LineChart from '../components/shared/LineChart';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
 import EndpointPendingBanner from '../components/shared/EndpointPendingBanner';
-import { ValidateModal, BudgetModal, RejectModal, RequestDetailModal } from '../components/modals/AllModals';
+import { ValidateModal, BudgetModal, RejectModal, RequestDetailModal, ProcurementRequestDetailModal } from '../components/modals/AllModals';
 import { formatMoney, formatMoneyShort, convert } from '../lib/currency';
 import {
   listShops,
@@ -46,6 +46,7 @@ export default function AccDashboard() {
   const [validateTarget, setValidateTarget] = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
   const [viewShop, setViewShop] = useState(null);
+  const [viewRequestId, setViewRequestId] = useState(null);
   const [shopsRaw, setShopsRaw] = useState([]);
   const [QUEUE_DATA, setQueueData] = useState([]);
   const [queueLoading, setQueueLoading] = useState(true);
@@ -261,6 +262,7 @@ export default function AccDashboard() {
                         <td><StatusTag type={q.budget} /></td>
                         <td>
                           <div className="ra">
+                            <button className="rb vw" onClick={() => setViewRequestId(q.id)} title="View detail">View</button>
                             <button className="rb ap" onClick={() => handleApprove(q)}>Approve</button>
                             {q.budget === 'over' && <button className="rb ed" onClick={() => setValidateTarget(q)}>Adjust</button>}
                             <button className="rb rj" onClick={() => setRejectTarget(q)}>Reject</button>
@@ -331,13 +333,27 @@ export default function AccDashboard() {
       </div>
 
       <ValidateModal open={!!validateTarget} onClose={() => setValidateTarget(null)} request={validateTarget} />
-      <BudgetModal open={showBudget} onClose={() => setShowBudget(false)} />
+      <BudgetModal
+        open={showBudget}
+        shops={shopsRaw.filter((s) => !session?.brand || s.brand?.name === session.brand)}
+        budgets={budgetsRaw}
+        onClose={(saved) => {
+          setShowBudget(false);
+          if (saved) {
+            // Refresh budgets so the table reflects the new amounts.
+            listBudgets()
+              .then((list) => setBudgetsRaw(Array.isArray(list) ? list : []))
+              .catch(() => {});
+          }
+        }}
+      />
       <RejectModal
         open={!!rejectTarget}
         onClose={() => setRejectTarget(null)}
         requestId={rejectTarget?.id}
         onConfirm={(reason) => confirmReject(reason)}
       />
+      <ProcurementRequestDetailModal requestId={viewRequestId} onClose={() => setViewRequestId(null)} />
       <RequestDetailModal
         request={viewShop ? { id: viewShop.id, date: 'Mar 2025', cat: 'Budget View', purpose: `${viewShop.loc} — ${viewShop.pct}% of ${formatMoneyShort(viewShop.budget, currency)} budget`, supplier: 'N/A', amt: `${formatMoneyShort(viewShop.spent, currency)} disbursed`, status: viewShop.status } : null}
         onClose={() => setViewShop(null)}

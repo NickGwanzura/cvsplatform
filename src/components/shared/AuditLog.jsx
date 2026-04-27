@@ -8,7 +8,7 @@ export default function AuditLog({ title, entries }) {
             <div className="log-dot" style={{ background: e.color }} />
             <div className="log-time">{e.time}</div>
             <div style={{ flex: 1 }}>
-              <div className="log-txt" dangerouslySetInnerHTML={{ __html: e.text }} />
+              <div className="log-txt">{e.text}</div>
               <div className="log-user">{e.user}</div>
             </div>
             {e.chip}

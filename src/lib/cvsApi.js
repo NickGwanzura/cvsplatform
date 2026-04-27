@@ -2,8 +2,9 @@ import axios from 'axios';
 
 const baseURL = import.meta.env.NEXT_PUBLIC_API_BASE_URL || '/api/v1';
 
-// Debug logging — set NEXT_PUBLIC_API_DEBUG=false to silence. Default on.
-const DEBUG = import.meta.env.NEXT_PUBLIC_API_DEBUG !== 'false';
+// Debug logging — opt-in. Set NEXT_PUBLIC_API_DEBUG=true to enable in dev.
+// Off by default everywhere so prod browsers don't log request bodies / partial tokens.
+const DEBUG = import.meta.env.NEXT_PUBLIC_API_DEBUG === 'true';
 
 if (DEBUG) {
   console.log(
@@ -71,38 +72,36 @@ api.interceptors.response.use(
   },
   (error) => {
     const cfg = error.config || {};
-    const ms = cfg.metadata?.startedAt
-      ? (performance.now() - cfg.metadata.startedAt).toFixed(0)
-      : '?';
     const status = error.response?.status;
-    const url = `${cfg.baseURL || ''}${cfg.url || ''}`;
-    const label = status ? `HTTP ${status}` : (error.code || 'Network error');
 
-    console.groupCollapsed(
-      `%c[cvsApi] ✗ ${label} ${cfg.method?.toUpperCase() || ''} ${url} (${ms}ms)`,
-      'color:#da1e28;font-weight:bold'
-    );
-    console.log('message     ', error.message);
-    if (error.code) console.log('code        ', error.code);
-    if (status) {
-      console.log('status      ', status, error.response?.statusText);
-      console.log('response    ', error.response?.data);
-      console.log('resHeaders  ', error.response?.headers);
-    } else {
-      // Network / CORS / mixed-content / DNS — no response object.
-      console.log('hint        ', 'No response received. Common causes: network offline, CORS block, mixed-content (HTTPS page → HTTP API), DNS failure, server unreachable.');
+    if (DEBUG) {
+      const ms = cfg.metadata?.startedAt
+        ? (performance.now() - cfg.metadata.startedAt).toFixed(0)
+        : '?';
+      const url = `${cfg.baseURL || ''}${cfg.url || ''}`;
+      const label = status ? `HTTP ${status}` : (error.code || 'Network error');
+      console.groupCollapsed(
+        `%c[cvsApi] ✗ ${label} ${cfg.method?.toUpperCase() || ''} ${url} (${ms}ms)`,
+        'color:#da1e28;font-weight:bold'
+      );
+      console.log('message     ', error.message);
+      if (error.code) console.log('code        ', error.code);
+      if (status) {
+        console.log('status      ', status, error.response?.statusText);
+        console.log('response    ', maskPayload(error.response?.data));
+      } else {
+        console.log('hint        ', 'No response received. Common causes: network offline, CORS block, mixed-content (HTTPS page → HTTP API), DNS failure, server unreachable.');
+      }
+      console.log('request     ', {
+        method: cfg.method?.toUpperCase(),
+        url,
+        body: maskPayload(cfg.data),
+      });
+      console.groupEnd();
     }
-    console.log('request     ', {
-      method: cfg.method?.toUpperCase(),
-      url,
-      headers: cfg.headers,
-      body: maskPayload(cfg.data),
-    });
-    if (error.stack) console.log('stack       ', error.stack);
-    console.groupEnd();
 
     if (status === 401 && typeof window !== 'undefined') {
-      localStorage.clear();
+      localStorage.removeItem('token');
       window.location.href = '/login';
     }
     return Promise.reject(error);

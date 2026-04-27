@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import StatusTag from '../components/shared/StatusTag';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
 import EndpointPendingBanner from '../components/shared/EndpointPendingBanner';
-import { ExceptionRequestModal, RequestDetailModal } from '../components/modals/AllModals';
+import { ExceptionRequestModal, ProcurementRequestDetailModal } from '../components/modals/AllModals';
 import { listProcurementRequests } from '../lib/cvsApi';
 
 // Map a paginated /procurement/requests record into the row shape the table renders.
@@ -92,7 +92,7 @@ export default function MgrDashboard() {
       </div>
 
       <ExceptionRequestModal open={showExc} onClose={() => setShowExc(false)} />
-      <RequestDetailModal request={viewRequest} onClose={() => setViewRequest(null)} />
+      <ProcurementRequestDetailModal requestId={viewRequest?.id || null} onClose={() => setViewRequest(null)} />
     </>
   );
 }

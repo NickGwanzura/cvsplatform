@@ -4,7 +4,7 @@ import StatusTag from '../components/shared/StatusTag';
 import LineChart from '../components/shared/LineChart';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
 import EndpointPendingBanner from '../components/shared/EndpointPendingBanner';
-import { PayModal, BatchPayModal, ExceptionApproveModal, StatementModal, RejectModal } from '../components/modals/AllModals';
+import { PayModal, BatchPayModal, ExceptionApproveModal, StatementModal, RejectModal, ProcurementRequestDetailModal } from '../components/modals/AllModals';
 import {
   listProcurementRequests,
   rejectProcurementRequest,
@@ -48,6 +48,7 @@ export default function BmDashboard() {
   const [showExcApprove, setShowExcApprove] = useState(false);
   const [showStatement, setShowStatement] = useState(false);
   const [rejectTarget, setRejectTarget] = useState(null);
+  const [viewRequestId, setViewRequestId] = useState(null);
   const [raisedRecon, setRaisedRecon] = useState({});
   const [APPROVALS, setApprovals] = useState([]);
   const [loadingApprovals, setLoadingApprovals] = useState(true);
@@ -165,6 +166,7 @@ export default function BmDashboard() {
                   <td><StatusTag type={a.flag} /></td>
                   <td>
                     <div className="ra">
+                      <button className="rb vw" onClick={() => setViewRequestId(a.id)} title="View detail">View</button>
                       <button className="rb ap" onClick={() => handleApprove(a)}>Approve</button>
                       <button className="rb pay" onClick={() => setPayTarget(a)}>Pay InnBucks</button>
                       <button className="rb rj" onClick={() => setRejectTarget(a)}>Reject</button>
@@ -307,6 +309,7 @@ export default function BmDashboard() {
         requestId={rejectTarget?.id}
         onConfirm={(reason) => confirmReject(reason)}
       />
+      <ProcurementRequestDetailModal requestId={viewRequestId} onClose={() => setViewRequestId(null)} />
     </>
   );
 }
