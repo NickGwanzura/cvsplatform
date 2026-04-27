@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import StatusTag from '../components/shared/StatusTag';
 import LineChart from '../components/shared/LineChart';
@@ -6,12 +6,31 @@ import Breadcrumbs from '../components/shared/Breadcrumbs';
 import EndpointPendingBanner from '../components/shared/EndpointPendingBanner';
 import { ValidateModal, BudgetModal, RejectModal, RequestDetailModal } from '../components/modals/AllModals';
 import { formatMoney, formatMoneyShort, convert } from '../lib/currency';
-import { listShops } from '../lib/cvsApi';
+import {
+  listShops,
+  listProcurementRequests,
+  approveProcurementRequest,
+  rejectProcurementRequest,
+  listBudgets,
+} from '../lib/cvsApi';
+
+// Map a /procurement/requests record into the review-queue row shape.
+const toQueueRow = (r) => {
+  const amt = Number(r.amount || 0);
+  return {
+    id: r.id,
+    mgr: r.requested_by?.full_name || r.requested_by?.name || '—',
+    shop: r.shop?.name || '—',
+    cat: r.category?.name || '—',
+    supplier: r.supplier?.name || '—',
+    amt: `$${amt.toFixed(2)}`,
+    rawAmt: amt,
+    budget: 'within',
+  };
+};
 
 // Budget burn trend across 4 weeks — per shop (multi-line)
 const BUDGET_TREND = [];
-
-const QUEUE_DATA = [];
 
 const pctColor = (p) => p >= 90 ? 'var(--er)' : p >= 70 ? 'var(--wa-t)' : 'var(--ok-t)';
 
@@ -28,30 +47,79 @@ export default function AccDashboard() {
   const [rejectTarget, setRejectTarget] = useState(null);
   const [viewShop, setViewShop] = useState(null);
   const [shopsRaw, setShopsRaw] = useState([]);
+  const [QUEUE_DATA, setQueueData] = useState([]);
+  const [queueLoading, setQueueLoading] = useState(true);
+  const [queueError, setQueueError] = useState('');
+  const [budgetsRaw, setBudgetsRaw] = useState([]);
+  const [budgetsError, setBudgetsError] = useState('');
+
+  const refreshQueue = useCallback(() => {
+    setQueueLoading(true);
+    listProcurementRequests({ status: 'pending' })
+      .then((list) => setQueueData(Array.isArray(list) ? list.map(toQueueRow) : []))
+      .catch((err) => setQueueError(err?.response?.data?.message || err.message || 'Failed to load queue'))
+      .finally(() => setQueueLoading(false));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     listShops()
       .then((list) => !cancelled && setShopsRaw(Array.isArray(list) ? list : []))
       .catch(() => !cancelled && setShopsRaw([]));
+    refreshQueue();
+    listBudgets()
+      .then((list) => !cancelled && setBudgetsRaw(Array.isArray(list) ? list : []))
+      .catch((err) => !cancelled && setBudgetsError(err?.response?.data?.message || err.message || ''));
     return () => { cancelled = true; };
-  }, []);
+  }, [refreshQueue]);
 
-  // Map API shops into the shape the existing UI consumes. Budget/disbursed
-  // metrics aren't available from the backend yet — default to 0 so the table
-  // renders the rows without crashing.
+  // Index per-shop budget by shop_id so the table can join with /shops.
+  const budgetByShop = budgetsRaw.reduce((acc, b) => {
+    if (b.shop_id) acc[b.shop_id] = b;
+    return acc;
+  }, {});
+
+  const handleApprove = async (row) => {
+    try {
+      await approveProcurementRequest(row.id);
+      addToast('ok', `${row.id} approved`, 'Forwarded to Brand Manager');
+      refreshQueue();
+    } catch (err) {
+      addToast('er', 'Approve failed', err?.response?.data?.message || err.message || 'Try again');
+    }
+  };
+
+  const confirmReject = async (reason) => {
+    if (!rejectTarget) return;
+    try {
+      await rejectProcurementRequest(rejectTarget.id, reason);
+      addToast('er', `${rejectTarget.id} rejected`, 'Shop manager will be notified');
+      refreshQueue();
+    } catch (err) {
+      addToast('er', 'Reject failed', err?.response?.data?.message || err.message || 'Try again');
+    }
+  };
+
+  // Map API shops into the shape the existing UI consumes. Budget rows come
+  // from /budgets indexed by shop_id; disbursed totals still aren't exposed
+  // by the backend so default to 0 until /reports/shop ships.
   const SHOPS = shopsRaw
     .filter((s) => !session?.brand || s.brand?.name === session.brand)
-    .map((s) => ({
-      id: s.id,
-      shop: s.name,
-      brand: s.brand?.name || session?.brand || '—',
-      location: s.location || '—',
-      budget: 0,
-      disbursed: 0,
-      pct: 0,
-      manager: '—',
-    }));
+    .map((s) => {
+      const b = budgetByShop[s.id];
+      const budget = Number(b?.amount ?? b?.monthly_amount ?? 0);
+      return {
+        id: s.id,
+        shop: s.name,
+        brand: s.brand?.name || session?.brand || '—',
+        loc: s.location || '—',
+        budget,
+        spent: 0,
+        pct: 0,
+        manager: '—',
+        status: budget > 0 ? 'ok' : 'pending',
+      };
+    });
 
   const filteredQueue = QUEUE_DATA.filter(q => {
     const matchSearch = !search || [q.id, q.mgr, q.shop, q.cat, q.supplier].some(v => v.toLowerCase().includes(search.toLowerCase()));
@@ -140,9 +208,9 @@ export default function AccDashboard() {
         {/* ── Tab 1: Review Queue ───────────────────────────────────────── */}
         {tab === 1 && (<>
           <EndpointPendingBanner
-            feature="The cash-entries review queue (validate / approve / reject)"
-            endpoints={['GET /api/v1/cash-entries?status=submitted', 'POST /api/v1/cash-entries/:id/approve', 'POST /api/v1/cash-entries/:id/reject']}
-            note="cash_entries.approve is seeded on BRAND_ACCOUNTANT but the routes 404. Approve/reject endpoints are guesses pending backend confirmation."
+            feature="Per-request budget gating (over/within limit) and disbursed totals"
+            endpoints={['GET /api/v1/reports/shop', 'GET /api/v1/reports/brand']}
+            note="Approve & Reject are wired to /procurement/requests. The over/within-limit flag and disbursed totals still need /reports to ship."
           />
           <div className="kg c4">
             <div className="kc yw"><div className="kl">Pending Review</div><div className="kv">{QUEUE_DATA.length}</div><div className="kd nt">Awaiting validation</div><div className="ki">⏳</div></div>
@@ -178,24 +246,28 @@ export default function AccDashboard() {
               </tr>
             </thead>
             <tbody>
-              {filteredQueue.length === 0
-                ? <tr><td colSpan={9} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No requests match filter</td></tr>
-                : filteredQueue.map(q => (
-                  <tr key={q.id} style={q.rowBg ? { background: q.rowBg } : {}}>
-                    <td className="ck"><input type="checkbox" checked={!!checked[q.id]} onChange={e => setChecked(c => ({ ...c, [q.id]: e.target.checked }))} /></td>
-                    <td><code style={{ color: q.budget === 'over' ? 'var(--er)' : 'var(--info)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>{q.id}</code></td>
-                    <td>{q.mgr}</td><td style={{ fontSize: 12 }}>{q.shop}</td><td>{q.cat}</td><td>{q.supplier}</td>
-                    <td><strong>{q.amt}</strong></td>
-                    <td><StatusTag type={q.budget} /></td>
-                    <td>
-                      <div className="ra">
-                        <button className="rb ap" onClick={() => setValidateTarget(q)}>Validate</button>
-                        {q.budget === 'over' && <button className="rb ed" onClick={() => setValidateTarget(q)}>Adjust</button>}
-                        <button className="rb rj" onClick={() => setRejectTarget(q)}>Reject</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+              {queueLoading
+                ? <tr><td colSpan={9} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>Loading…</td></tr>
+                : queueError
+                  ? <tr><td colSpan={9} style={{ textAlign: 'center', color: 'var(--er-t)', padding: 20 }}>{queueError}</td></tr>
+                  : filteredQueue.length === 0
+                    ? <tr><td colSpan={9} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No requests match filter</td></tr>
+                    : filteredQueue.map(q => (
+                      <tr key={q.id} style={q.rowBg ? { background: q.rowBg } : {}}>
+                        <td className="ck"><input type="checkbox" checked={!!checked[q.id]} onChange={e => setChecked(c => ({ ...c, [q.id]: e.target.checked }))} /></td>
+                        <td><code style={{ color: q.budget === 'over' ? 'var(--er)' : 'var(--info)', fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>{q.id}</code></td>
+                        <td>{q.mgr}</td><td style={{ fontSize: 12 }}>{q.shop}</td><td>{q.cat}</td><td>{q.supplier}</td>
+                        <td><strong>{q.amt}</strong></td>
+                        <td><StatusTag type={q.budget} /></td>
+                        <td>
+                          <div className="ra">
+                            <button className="rb ap" onClick={() => handleApprove(q)}>Approve</button>
+                            {q.budget === 'over' && <button className="rb ed" onClick={() => setValidateTarget(q)}>Adjust</button>}
+                            <button className="rb rj" onClick={() => setRejectTarget(q)}>Reject</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
               }
             </tbody>
           </table>
@@ -203,10 +275,18 @@ export default function AccDashboard() {
 
         {/* ── Tab 2: Budget Management ──────────────────────────────────── */}
         {tab === 2 && (<>
+          {budgetsError ? (
+            <div className="ntf wa" style={{ marginBottom: 12 }}>
+              <div>
+                <div className="ntf-t">Could not load budgets</div>
+                <div className="ntf-b">{budgetsError}</div>
+              </div>
+            </div>
+          ) : null}
           <EndpointPendingBanner
-            feature="Per-shop monthly budget configuration"
-            endpoints={['GET /api/v1/budgets', 'PUT /api/v1/budgets/:shopId', 'GET /api/v1/reports/brand']}
-            note="No budget-related permission codes are seeded yet — the budgets module appears unstarted on the backend."
+            feature="Disbursed totals and 80% threshold computation"
+            endpoints={['GET /api/v1/reports/brand']}
+            note="/budgets is wired (list/store/update/delete). Disbursed-vs-budget metrics still need /reports to ship."
           />
           <div className="ntf info" style={{ marginBottom: 16 }}>
             <div>
@@ -256,7 +336,7 @@ export default function AccDashboard() {
         open={!!rejectTarget}
         onClose={() => setRejectTarget(null)}
         requestId={rejectTarget?.id}
-        onConfirm={() => addToast('er', `${rejectTarget?.id} rejected`, 'Shop manager will be notified')}
+        onConfirm={(reason) => confirmReject(reason)}
       />
       <RequestDetailModal
         request={viewShop ? { id: viewShop.id, date: 'Mar 2025', cat: 'Budget View', purpose: `${viewShop.loc} — ${viewShop.pct}% of ${formatMoneyShort(viewShop.budget, currency)} budget`, supplier: 'N/A', amt: `${formatMoneyShort(viewShop.spent, currency)} disbursed`, status: viewShop.status } : null}

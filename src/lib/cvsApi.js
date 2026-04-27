@@ -285,4 +285,33 @@ export const unlinkSupplierProduct = (supplierId, productId) =>
     .delete(`/procurement/suppliers/${supplierId}/products/${productId}`)
     .then((r) => r.data);
 
+// Procurement — Requests
+// Index supports filtering via query params (e.g. { status, shop_id, brand_id }).
+export const listProcurementRequests = (params) =>
+  api.get('/procurement/requests', { params }).then(unwrap);
+export const showProcurementRequest = (id) =>
+  api.get(`/procurement/requests/${id}`).then((r) => r.data);
+// Shop Manager only. Server gates with role check before validation.
+export const createProcurementRequest = (data) =>
+  api.post('/procurement/requests', data).then((r) => r.data);
+export const approveProcurementRequest = (id, data = {}) =>
+  api.post(`/procurement/requests/${id}/approve`, data).then((r) => r.data);
+export const rejectProcurementRequest = (id, reason) =>
+  api.post(`/procurement/requests/${id}/reject`, { reason }).then((r) => r.data);
+
+// Budgets — brand-scoped. Index/store require user with a brand assignment.
+export const listBudgets = (params) =>
+  api.get('/budgets', { params }).then(unwrap);
+export const showBudget = (id) =>
+  api.get(`/budgets/${id}`).then((r) => r.data);
+export const createBudget = (data) =>
+  api.post('/budgets', data).then((r) => r.data);
+export const updateBudget = (id, data) =>
+  api.put(`/budgets/${id}`, data).then((r) => r.data);
+export const deleteBudget = (id) =>
+  api.delete(`/budgets/${id}`).then((r) => r.data);
+
+// Currency — public lookup of active currencies (USD, ZWG, …).
+export const listCurrencies = () => api.get('/currency').then(unwrap);
+
 export default api;

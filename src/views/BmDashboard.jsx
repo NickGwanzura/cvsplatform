@@ -1,12 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import StatusTag from '../components/shared/StatusTag';
 import LineChart from '../components/shared/LineChart';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
 import EndpointPendingBanner from '../components/shared/EndpointPendingBanner';
 import { PayModal, BatchPayModal, ExceptionApproveModal, StatementModal, RejectModal } from '../components/modals/AllModals';
+import {
+  listProcurementRequests,
+  rejectProcurementRequest,
+  approveProcurementRequest,
+} from '../lib/cvsApi';
 
-const APPROVALS = [];
+// Map a /procurement/requests record into the approvals-table row shape.
+const toApprovalRow = (r) => {
+  const amt = Number(r.amount || 0);
+  return {
+    id: r.id,
+    mgr: r.requested_by?.full_name || r.requested_by?.name || '—',
+    shop: r.shop?.name || '—',
+    purpose: r.description || r.purpose || '—',
+    supplier: r.supplier?.name || '—',
+    wallet: r.supplier?.inbucks_number || '—',
+    amt: `$${amt.toFixed(2)}`,
+    rawAmt: amt,
+    flag: r.status || 'pending',
+    idColor: 'var(--info)',
+  };
+};
 
 const INNBUCKS = [];
 
@@ -29,6 +49,19 @@ export default function BmDashboard() {
   const [showStatement, setShowStatement] = useState(false);
   const [rejectTarget, setRejectTarget] = useState(null);
   const [raisedRecon, setRaisedRecon] = useState({});
+  const [APPROVALS, setApprovals] = useState([]);
+  const [loadingApprovals, setLoadingApprovals] = useState(true);
+  const [loadError, setLoadError] = useState('');
+
+  const refreshApprovals = useCallback(() => {
+    setLoadingApprovals(true);
+    listProcurementRequests({ status: 'pending' })
+      .then((list) => setApprovals(Array.isArray(list) ? list.map(toApprovalRow) : []))
+      .catch((err) => setLoadError(err?.response?.data?.message || err.message || 'Failed to load approvals'))
+      .finally(() => setLoadingApprovals(false));
+  }, []);
+
+  useEffect(() => { refreshApprovals(); }, [refreshApprovals]);
 
   const selectedIds = Object.keys(selected).filter(id => selected[id]);
   const selectedRows = APPROVALS.filter(a => selectedIds.includes(a.id));
@@ -41,6 +74,27 @@ export default function BmDashboard() {
     const next = {};
     APPROVALS.forEach(a => { next[a.id] = c; });
     setSelected(next);
+  };
+
+  const confirmReject = async (reason) => {
+    if (!rejectTarget) return;
+    try {
+      await rejectProcurementRequest(rejectTarget.id, reason);
+      addToast('er', `${rejectTarget.id} rejected`, 'Shop manager will be notified by email');
+      refreshApprovals();
+    } catch (err) {
+      addToast('er', 'Reject failed', err?.response?.data?.message || err.message || 'Try again');
+    }
+  };
+
+  const handleApprove = async (row) => {
+    try {
+      await approveProcurementRequest(row.id);
+      addToast('ok', `${row.id} approved`, 'Forwarded for disbursement');
+      refreshApprovals();
+    } catch (err) {
+      addToast('er', 'Approve failed', err?.response?.data?.message || err.message || 'Try again');
+    }
   };
 
   const tabs = ['Approvals', 'InnBucks Sales'];
@@ -65,9 +119,9 @@ export default function BmDashboard() {
         {/* ── Tab 0: Approvals ─────────────────────────────────────────── */}
         {tab === 0 && (<>
           <EndpointPendingBanner
-            feature="The approvals queue"
-            endpoints={['GET /api/v1/cash-entries?status=approved', 'POST /api/v1/cash-entries/:id/reject', 'POST /api/v1/payments']}
-            note="cash_entries.{view, submit} are seeded on BRAND_MANAGER and cash_entries.approve on BRAND_ACCOUNTANT, but none of the routes exist yet. /payments has no permission code seeded — the disbursement module looks unstarted."
+            feature="Disbursement (Pay InnBucks / Batch Pay)"
+            endpoints={['POST /api/v1/payments']}
+            note="Approve & Reject are now wired to /procurement/requests. The disbursement module (/payments) has no permission code seeded yet — Pay InnBucks remains a stub."
           />
           <div className="kg c4">
             <div className="kc yw"><div className="kl">Pending Approvals</div><div className="kv">{APPROVALS.length}</div><div className="kd nt">Validated by Accountant</div><div className="ki">⏳</div></div>
@@ -95,8 +149,12 @@ export default function BmDashboard() {
               </tr>
             </thead>
             <tbody>
-              {APPROVALS.length === 0 ? (
-                <tr><td colSpan={10} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No data yet.</td></tr>
+              {loadingApprovals ? (
+                <tr><td colSpan={10} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>Loading…</td></tr>
+              ) : loadError ? (
+                <tr><td colSpan={10} style={{ textAlign: 'center', color: 'var(--er-t)', padding: 20 }}>{loadError}</td></tr>
+              ) : APPROVALS.length === 0 ? (
+                <tr><td colSpan={10} style={{ textAlign: 'center', color: 'var(--ts)', padding: 20 }}>No pending approvals.</td></tr>
               ) : APPROVALS.map(a => (
                 <tr key={a.id}>
                   <td className="ck"><input type="checkbox" checked={!!selected[a.id]} onChange={e => setSelected(s => ({ ...s, [a.id]: e.target.checked }))} /></td>
@@ -107,6 +165,7 @@ export default function BmDashboard() {
                   <td><StatusTag type={a.flag} /></td>
                   <td>
                     <div className="ra">
+                      <button className="rb ap" onClick={() => handleApprove(a)}>Approve</button>
                       <button className="rb pay" onClick={() => setPayTarget(a)}>Pay InnBucks</button>
                       <button className="rb rj" onClick={() => setRejectTarget(a)}>Reject</button>
                     </div>
@@ -246,7 +305,7 @@ export default function BmDashboard() {
         open={!!rejectTarget}
         onClose={() => setRejectTarget(null)}
         requestId={rejectTarget?.id}
-        onConfirm={() => addToast('er', `${rejectTarget?.id} rejected`, 'Shop manager will be notified by email')}
+        onConfirm={(reason) => confirmReject(reason)}
       />
     </>
   );

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { getMyProfile, logoutAll } from '../lib/cvsApi';
+import { getMyProfile, logoutAll, listCurrencies } from '../lib/cvsApi';
 import { ROLES } from '../data/mockData';
 import { normalizeAuth } from '../lib/authMap';
 
@@ -23,6 +23,15 @@ export function AppProvider({ children }) {
   const [brandFilter, setBrandFilter] = useState('All Brands');
   const [currency, setCurrency] = useState('USD');
   const toggleCurrency = useCallback(() => setCurrency(c => c === 'USD' ? 'ZWL' : 'USD'), []);
+  const [currencies, setCurrencies] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    listCurrencies()
+      .then((list) => !cancelled && setCurrencies(Array.isArray(list) ? list : []))
+      .catch(() => { /* lookup is non-critical */ });
+    return () => { cancelled = true; };
+  }, []);
 
   const login = useCallback((roleKey, roleData) => {
     setSession({ roleKey, ...roleData });
@@ -109,7 +118,7 @@ export function AppProvider({ children }) {
       batchSelected, setBatchSelected,
       navOpen, setNavOpen,
       brandFilter, setBrandFilter,
-      currency, setCurrency, toggleCurrency,
+      currency, setCurrency, toggleCurrency, currencies,
     }}>
       {children}
     </AppContext.Provider>

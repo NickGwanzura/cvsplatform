@@ -102,7 +102,7 @@ export function RejectModal({ open, onClose, requestId, onConfirm }) {
     <CvsModal open={open} onClose={onClose} title="Reject Request" subtitle={requestId ? `Rejecting ${requestId}` : 'Confirm rejection'}
       footer={<>
         <button className="ab sec" style={{ height: 42, padding: '0 20px' }} onClick={onClose}>Cancel</button>
-        <button className="ab dan" style={{ height: 42, padding: '0 20px' }} onClick={() => { onConfirm?.(); onClose(); setReason(''); }}>Confirm Rejection</button>
+        <button className="ab dan" style={{ height: 42, padding: '0 20px' }} disabled={!reason} onClick={() => { onConfirm?.(reason); onClose(); setReason(''); }}>Confirm Rejection</button>
       </>}
     >
       <div style={{ marginBottom: 13, padding: 10, background: 'var(--er-bg)', borderLeft: '3px solid var(--er)' }}>

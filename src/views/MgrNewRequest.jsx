@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
-import EndpointPendingBanner from '../components/shared/EndpointPendingBanner';
 import { SubmitRequestModal, NewSupplierModal } from '../components/modals/AllModals';
-import { listProcurementCategories, listSuppliers } from '../lib/cvsApi';
+import {
+  listProcurementCategories,
+  listSuppliers,
+  createProcurementRequest,
+} from '../lib/cvsApi';
 
 const STEPS = ['Details', 'Supplier', 'Submit'];
 // Fallback list shown if the categories endpoint is unreachable or empty.
@@ -70,9 +73,28 @@ export default function MgrNewRequest() {
 
   const back = () => { setErrors({}); setStep(s => Math.max(s - 1, 0)); };
 
-  const handleSubmit = () => {
-    setShowSubmit(true);
-    addToast('ok', 'Request submitted for review', 'Forwarded to Brand Accountant');
+  const [submitting, setSubmitting] = useState(false);
+  const handleSubmit = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    const cat = categories.find((c) => c.name === form.category);
+    const sup = supplierOptions.find((s) => s.label === form.supplier);
+    const payload = {
+      category_id: cat?.id,
+      supplier_id: sup?.id,
+      amount: parseFloat(form.amount || 0),
+      description: form.purpose,
+    };
+    try {
+      await createProcurementRequest(payload);
+      setShowSubmit(true);
+      addToast('ok', 'Request submitted for review', 'Forwarded to Brand Accountant');
+    } catch (err) {
+      const msg = err?.response?.data?.message || err.message || 'Submit failed';
+      addToast('er', 'Submit failed', msg);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const selectedSupplier = supplierOptions.find(s => s.label === form.supplier);
@@ -178,11 +200,6 @@ export default function MgrNewRequest() {
         {/* Step 2 — Review */}
         {step === 2 && (
           <div>
-            <EndpointPendingBanner
-              feature="Submitting a cash entry"
-              endpoints={['POST /api/v1/cash-entries', 'POST /api/v1/cash-entries/:id/submit']}
-              note="cash_entries.create + cash_entries.submit permissions are seeded but the routes 404. The form will go through once the backend registers them."
-            />
             <div style={{ background: 'var(--l1)', border: '1px solid var(--bs)', padding: 16, marginBottom: 13 }}>
               <div style={{ fontSize: 11, color: 'var(--ts)', fontFamily: "'IBM Plex Mono',monospace", textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>Request Summary</div>
               {[
@@ -215,7 +232,7 @@ export default function MgrNewRequest() {
           }
           {step < STEPS.length - 1
             ? <button className="ab pri" style={{ height: 44, padding: '0 24px' }} onClick={next}>Continue →</button>
-            : <button className="ab pri" style={{ height: 44, padding: '0 24px' }} onClick={handleSubmit}>Submit Request</button>
+            : <button className="ab pri" style={{ height: 44, padding: '0 24px' }} disabled={submitting} onClick={handleSubmit}>{submitting ? 'Submitting…' : 'Submit Request'}</button>
           }
         </div>
       </div>
